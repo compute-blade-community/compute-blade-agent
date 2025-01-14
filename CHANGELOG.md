@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.6](https://github.com/uptime-industries/compute-blade-agent/compare/v0.6.5...v0.6.6) (2025-01-14)
+
+
+### Bug Fixes
+
+* correct package name from computeblade-agent to compute-blade-agent ([#47](https://github.com/uptime-industries/compute-blade-agent/issues/47)) ([67b3411](https://github.com/uptime-industries/compute-blade-agent/commit/67b3411e32df10673c5f3bab8b76f31f366cf3ab))
+
 ## [0.6.5](https://github.com/uptime-industries/compute-blade-agent/compare/v0.6.4...v0.6.5) (2024-08-31)
 
 
