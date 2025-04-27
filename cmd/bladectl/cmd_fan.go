@@ -1,39 +1,32 @@
 package main
 
 import (
-	"strconv"
-
 	"github.com/spf13/cobra"
 	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
 )
 
+var (
+	percent int
+)
+
 func init() {
-	cmdFan.AddCommand(cmdFanSetPercent)
-	rootCmd.AddCommand(cmdFan)
+	cmdFan.Flags().IntVarP(&percent, "percent", "p", 40, "Fan speed in percent (Default: 40).")
+	_ = cmdFan.MarkFlagRequired("percent")
+
+	cmdSet.AddCommand(cmdFan)
 }
 
 var (
 	cmdFan = &cobra.Command{
-		Use:   "fan",
-		Short: "Fan-related commands for the compute blade",
-	}
-
-	cmdFanSetPercent = &cobra.Command{
-		Use:     "set-percent <percent>",
-		Example: "bladectl fan set-percent 50",
-		Short:   "Set the fan speed in percent",
-		Args:    cobra.ExactArgs(1),
+		Use:     "fan",
+		Short:   "Control the fan behavior of the compute-blade",
+		Example: "bladectl set fan --percent 50",
+		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			ctx := cmd.Context()
 			client := clientFromContext(ctx)
-
-			// convert string to int
-			percent, err := strconv.Atoi(args[0])
-			if err != nil {
-				return err
-			}
 
 			_, err = client.SetFanSpeed(ctx, &bladeapiv1alpha1.SetFanSpeedRequest{
 				Percent: int64(percent),

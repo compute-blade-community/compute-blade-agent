@@ -5,3 +5,4 @@ dist/
 *.out
 cover.cov
 fanunit.uf2
+.idea

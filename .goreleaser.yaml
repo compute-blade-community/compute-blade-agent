@@ -10,6 +10,11 @@ builds:
     binary: compute-blade-agent
     id: agent
     dir: ./cmd/agent/
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -X=main.Version={{.Version}}
+      - -X=main.Commit={{.Commit}}
+      - -X=main.Date={{ .CommitTimestamp }}
 
   - env: *env
     goos: *goos
@@ -17,6 +22,11 @@ builds:
     binary: bladectl
     id: bladectl
     dir: ./cmd/bladectl/
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -X=main.Version={{.Version}}
+      - -X=main.Commit={{.Commit}}
+      - -X=main.Date={{ .CommitTimestamp }}
 
 # Docker image including both agent and bladectl
 dockers:

@@ -22,6 +22,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	Version string
+	Commit  string
+	Date    string
+)
+
 func main() {
 	var wg sync.WaitGroup
 
@@ -84,7 +90,7 @@ func main() {
 		}
 	}()
 
-	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", viper.GetString("version")))
+	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit), zap.String("date", Date))
 	computebladeAgent, err := agent.NewComputeBladeAgent(ctx, cbAgentConfig)
 	if err != nil {
 		log.FromContext(ctx).Error("Failed to create agent", zap.Error(err))
