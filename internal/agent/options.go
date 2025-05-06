@@ -7,8 +7,15 @@ func WithComputeBladeAgent(agent ComputeBladeAgent) GrpcApiServiceOption {
 		service.agent = agent
 	}
 }
-func WithGrpcApiInsecure(insecure bool) GrpcApiServiceOption {
+
+func WithAuthentication(enabled bool) GrpcApiServiceOption {
 	return func(service *AgentGrpcService) {
-		service.insecure = insecure
+		service.authenticated = enabled
+	}
+}
+
+func WithListenAddr(server string) GrpcApiServiceOption {
+	return func(service *AgentGrpcService) {
+		service.listenAddr = server
 	}
 }

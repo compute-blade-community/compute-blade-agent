@@ -8,6 +8,7 @@ import (
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/uptime-induestries/compute-blade-agent/pkg/certs"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,9 +23,10 @@ import (
 // The type allows for serving gRPC requests and gracefully shutting down the server.
 type AgentGrpcService struct {
 	bladeapiv1alpha1.UnimplementedBladeAgentServiceServer
-	agent    ComputeBladeAgent
-	server   *grpc.Server
-	insecure bool
+	agent         ComputeBladeAgent
+	server        *grpc.Server
+	authenticated bool
+	listenAddr    string
 }
 
 // NewGrpcApiServer creates a new gRPC service
@@ -37,9 +39,9 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 
 	grpcOpts := make([]grpc.ServerOption, 0)
 
-	if !service.insecure {
+	if service.authenticated {
 		// Load server's certificate and private key
-		cert, certPool, err := getTLSCerts(ctx)
+		cert, certPool, err := certs.GenerateServerCert(ctx, service.listenAddr)
 		if err != nil {
 			log.FromContext(ctx).Fatal("failed to load server key pair",
 				zap.Error(err),
@@ -64,9 +66,9 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 	return service
 }
 
-func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.CancelCauseFunc, listenConfig *ApiConfig) {
+func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.CancelCauseFunc) {
 	go func() {
-		err := s.Serve(ctx, listenConfig)
+		err := s.Serve(ctx)
 		if err != nil {
 			log.FromContext(ctx).Error("Failed to start grpc server",
 				zap.Error(err),
@@ -79,22 +81,22 @@ func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.Cancel
 	}()
 }
 
-func (s *AgentGrpcService) Serve(ctx context.Context, listenConfig *ApiConfig) humane.Error {
-	if listenConfig == nil {
-		return humane.New("no listen config provided",
+func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
+	if len(s.listenAddr) == 0 {
+		return humane.New("no listen address provided",
 			"ensure you are passing a valid listen config to the grpc server",
 		)
 	}
 
 	// FIXME add logging middleware
-	grpcListen, err := net.Listen("unix", listenConfig.Grpc)
+	grpcListen, err := net.Listen("unix", s.listenAddr)
 	if err != nil {
 		return humane.Wrap(err, "failed to create grpc listener",
 			"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
 		)
 	}
 
-	log.FromContext(ctx).Info("Starting grpc server", zap.String("address", listenConfig.Grpc))
+	log.FromContext(ctx).Info("Starting grpc server", zap.String("address", s.listenAddr))
 	if err := s.server.Serve(grpcListen); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 		return humane.Wrap(err, "failed to start grpc server",
 			"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
@@ -147,4 +149,19 @@ func (s *AgentGrpcService) SetStealthMode(ctx context.Context, req *bladeapiv1al
 // GetStatus aggregates the status of the blade
 func (s *AgentGrpcService) GetStatus(context.Context, *emptypb.Empty) (*bladeapiv1alpha1.StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+}
+
+// GenerateClientCertificate creates a client certificate for secure communication with the blade agent.
+// It returns a StatusResponse containing the updated agent status or an error if the operation fails.
+func (s *AgentGrpcService) GenerateClientCertificate(_ context.Context, req *bladeapiv1alpha1.ClientCertRequest) (*bladeapiv1alpha1.ClientCertResponse, error) {
+	caPEM, certPEM, keyPEM, err := certs.GenerateClientCert(req.CommonName)
+	if err != nil {
+		return nil, status.Errorf(codes.Aborted, "failed to generate client certificate: %s", err.Error())
+	}
+
+	return &bladeapiv1alpha1.ClientCertResponse{
+		CaPem:          string(caPEM),
+		CertificatePem: string(certPEM),
+		PrivateKeyPem:  string(keyPEM),
+	}, nil
 }

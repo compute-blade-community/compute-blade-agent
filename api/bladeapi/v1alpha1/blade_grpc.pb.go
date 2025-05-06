@@ -20,11 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	BladeAgentService_EmitEvent_FullMethodName              = "/api.bladeapi.v1alpha1.BladeAgentService/EmitEvent"
-	BladeAgentService_WaitForIdentifyConfirm_FullMethodName = "/api.bladeapi.v1alpha1.BladeAgentService/WaitForIdentifyConfirm"
-	BladeAgentService_SetFanSpeed_FullMethodName            = "/api.bladeapi.v1alpha1.BladeAgentService/SetFanSpeed"
-	BladeAgentService_SetStealthMode_FullMethodName         = "/api.bladeapi.v1alpha1.BladeAgentService/SetStealthMode"
-	BladeAgentService_GetStatus_FullMethodName              = "/api.bladeapi.v1alpha1.BladeAgentService/GetStatus"
+	BladeAgentService_EmitEvent_FullMethodName                 = "/api.bladeapi.v1alpha1.BladeAgentService/EmitEvent"
+	BladeAgentService_WaitForIdentifyConfirm_FullMethodName    = "/api.bladeapi.v1alpha1.BladeAgentService/WaitForIdentifyConfirm"
+	BladeAgentService_SetFanSpeed_FullMethodName               = "/api.bladeapi.v1alpha1.BladeAgentService/SetFanSpeed"
+	BladeAgentService_SetStealthMode_FullMethodName            = "/api.bladeapi.v1alpha1.BladeAgentService/SetStealthMode"
+	BladeAgentService_GetStatus_FullMethodName                 = "/api.bladeapi.v1alpha1.BladeAgentService/GetStatus"
+	BladeAgentService_GenerateClientCertificate_FullMethodName = "/api.bladeapi.v1alpha1.BladeAgentService/GenerateClientCertificate"
 )
 
 // BladeAgentServiceClient is the client API for BladeAgentService service.
@@ -38,6 +39,7 @@ type BladeAgentServiceClient interface {
 	SetFanSpeed(ctx context.Context, in *SetFanSpeedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetStealthMode(ctx context.Context, in *StealthModeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
+	GenerateClientCertificate(ctx context.Context, in *ClientCertRequest, opts ...grpc.CallOption) (*ClientCertResponse, error)
 }
 
 type bladeAgentServiceClient struct {
@@ -93,6 +95,15 @@ func (c *bladeAgentServiceClient) GetStatus(ctx context.Context, in *emptypb.Emp
 	return out, nil
 }
 
+func (c *bladeAgentServiceClient) GenerateClientCertificate(ctx context.Context, in *ClientCertRequest, opts ...grpc.CallOption) (*ClientCertResponse, error) {
+	out := new(ClientCertResponse)
+	err := c.cc.Invoke(ctx, BladeAgentService_GenerateClientCertificate_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BladeAgentServiceServer is the server API for BladeAgentService service.
 // All implementations must embed UnimplementedBladeAgentServiceServer
 // for forward compatibility
@@ -104,6 +115,7 @@ type BladeAgentServiceServer interface {
 	SetFanSpeed(context.Context, *SetFanSpeedRequest) (*emptypb.Empty, error)
 	SetStealthMode(context.Context, *StealthModeRequest) (*emptypb.Empty, error)
 	GetStatus(context.Context, *emptypb.Empty) (*StatusResponse, error)
+	GenerateClientCertificate(context.Context, *ClientCertRequest) (*ClientCertResponse, error)
 	mustEmbedUnimplementedBladeAgentServiceServer()
 }
 
@@ -125,6 +137,9 @@ func (UnimplementedBladeAgentServiceServer) SetStealthMode(context.Context, *Ste
 }
 func (UnimplementedBladeAgentServiceServer) GetStatus(context.Context, *emptypb.Empty) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+}
+func (UnimplementedBladeAgentServiceServer) GenerateClientCertificate(context.Context, *ClientCertRequest) (*ClientCertResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateClientCertificate not implemented")
 }
 func (UnimplementedBladeAgentServiceServer) mustEmbedUnimplementedBladeAgentServiceServer() {}
 
@@ -229,6 +244,24 @@ func _BladeAgentService_GetStatus_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BladeAgentService_GenerateClientCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientCertRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BladeAgentServiceServer).GenerateClientCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BladeAgentService_GenerateClientCertificate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BladeAgentServiceServer).GenerateClientCertificate(ctx, req.(*ClientCertRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BladeAgentService_ServiceDesc is the grpc.ServiceDesc for BladeAgentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -255,6 +288,10 @@ var BladeAgentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStatus",
 			Handler:    _BladeAgentService_GetStatus_Handler,
+		},
+		{
+			MethodName: "GenerateClientCertificate",
+			Handler:    _BladeAgentService_GenerateClientCertificate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

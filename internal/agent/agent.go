@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/uptime-induestries/compute-blade-agent/internal/config"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
@@ -44,14 +45,13 @@ type ComputeBladeAgent interface {
 	SetFanSpeed(_ context.Context, speed uint8) error
 	// SetStealthMode sets the stealth mode
 	SetStealthMode(_ context.Context, enabled bool) error
-
 	// WaitForIdentifyConfirm blocks until the user confirms the identify mode
 	WaitForIdentifyConfirm(ctx context.Context) error
 }
 
 // computeBladeAgentImpl is the implementation of the ComputeBladeAgent interface
 type computeBladeAgentImpl struct {
-	opts          ComputeBladeAgentConfig
+	opts          config.ComputeBladeAgentConfig
 	blade         hal.ComputeBladeHal
 	state         ComputebladeState
 	edgeLedEngine ledengine.LedEngine
@@ -62,7 +62,7 @@ type computeBladeAgentImpl struct {
 	eventChan chan Event
 }
 
-func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (ComputeBladeAgent, error) {
+func NewComputeBladeAgent(ctx context.Context, opts config.ComputeBladeAgentConfig) (ComputeBladeAgent, error) {
 	var err error
 
 	// blade, err := hal.NewCm4Hal(hal.ComputeBladeHalOpts{

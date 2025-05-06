@@ -1,4 +1,4 @@
-package agent
+package config
 
 import (
 	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
@@ -46,7 +46,7 @@ type ComputeBladeAgentConfig struct {
 }
 
 type ApiConfig struct {
-	Metrics      string `mapstructure:"metrics"`
-	Grpc         string `mapstructure:"grpc"`
-	GrpcInsecure bool   `mapstructure:"grpc_insecure"`
+	Metrics           string `mapstructure:"metrics"`
+	Grpc              string `mapstructure:"grpc"`
+	GrpcAuthenticated bool   `mapstructure:"authenticated"`
 }

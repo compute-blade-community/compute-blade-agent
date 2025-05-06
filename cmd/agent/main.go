@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"github.com/uptime-induestries/compute-blade-agent/internal/agent"
+	"github.com/uptime-induestries/compute-blade-agent/internal/config"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
@@ -65,7 +66,7 @@ func main() {
 	defer cancelCtx(context.Canceled)
 
 	// load configuration
-	var cbAgentConfig agent.ComputeBladeAgentConfig
+	var cbAgentConfig config.ComputeBladeAgentConfig
 	if err := viper.Unmarshal(&cbAgentConfig); err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).Fatal("Failed to load configuration", zap.Error(err))
@@ -109,11 +110,12 @@ func main() {
 	// Setup GRPC server
 	grpcServer := agent.NewGrpcApiServer(ctx,
 		agent.WithComputeBladeAgent(computebladeAgent),
-		agent.WithGrpcApiInsecure(cbAgentConfig.Listen.GrpcInsecure),
+		agent.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
+		agent.WithListenAddr(cbAgentConfig.Listen.Grpc),
 	)
 
 	// Run gRPC API
-	grpcServer.ServeAsync(ctx, cancelCtx, &cbAgentConfig.Listen)
+	grpcServer.ServeAsync(ctx, cancelCtx)
 
 	// setup prometheus endpoint
 	promServer := runPrometheusEndpoint(ctx, cancelCtx, &cbAgentConfig.Listen)
@@ -154,7 +156,7 @@ func main() {
 	}
 }
 
-func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *agent.ApiConfig) *http.Server {
+func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *config.ApiConfig) *http.Server {
 	instrumentationHandler := http.NewServeMux()
 	instrumentationHandler.Handle("/metrics", promhttp.Handler())
 	instrumentationHandler.HandleFunc("/debug/pprof/", pprof.Index)
