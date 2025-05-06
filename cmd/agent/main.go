@@ -29,9 +29,6 @@ var (
 
 func main() {
 	// Setup configuration
-	viper.SetConfigType("yaml")
-
-	// auto-bind environment variables
 	viper.SetEnvPrefix("BLADE")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()

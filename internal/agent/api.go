@@ -45,7 +45,6 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 		if err != nil {
 			log.FromContext(ctx).Fatal("failed to load server key pair",
 				zap.Error(err),
-				zap.String("cause", err.Cause().Error()),
 				zap.Strings("advice", err.Advice()),
 			)
 		}

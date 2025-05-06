@@ -113,10 +113,10 @@ func GenerateServerCert(ctx context.Context, serverAddr string) (tls.Certificate
 		return tls.Certificate{}, nil, herr
 	}
 
-	if err := writePEM(serverCertPath, "CERTIFICATE", serverCertDER); err != nil {
+	if err := writePEM(serverCertPath, serverCertDER); err != nil {
 		return tls.Certificate{}, nil, err
 	}
-	if err := writePEM(serverKeyPath, "EC PRIVATE KEY", serverKeyDER); err != nil {
+	if err := writePEM(serverKeyPath, serverKeyDER); err != nil {
 		return tls.Certificate{}, nil, err
 	}
 
@@ -172,14 +172,14 @@ func GenerateServerCert(ctx context.Context, serverAddr string) (tls.Certificate
 		)
 	}
 
-	configDir := filepath.Join(homeDir, ".bladectl")
+	configDir := filepath.Join(homeDir, ".config", "bladectl")
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return tls.Certificate{}, nil, humane.Wrap(err, "Failed to create config directory",
 			"ensure the home-directory is writable by the agent user",
 		)
 	}
 
-	configPath := filepath.Join(configDir, "config")
+	configPath := filepath.Join(configDir, "config.yaml")
 	data, err := yaml.Marshal(&bladectlConfig)
 	if err != nil {
 		return tls.Certificate{}, nil, humane.Wrap(err, "Failed to marshal YAML config",
@@ -261,13 +261,16 @@ func ensureCA(ctx context.Context) humane.Error {
 		)
 	}
 
-	if err := writePEM(caPath, "CERTIFICATE", caCertDER); err != nil {
+	caCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertDER})
+	caKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: caKeyBytes})
+
+	if err := writePEM(caPath, caCertPEM); err != nil {
 		return humane.Wrap(err, "failed to write CA certificate",
 			"ensure the directory you are trying to create exists and is writable by the agent user",
 		)
 	}
 
-	if err := writePEM(caKeyPath, "EC PRIVATE KEY", caKeyBytes); err != nil {
+	if err := writePEM(caKeyPath, caKeyPEM); err != nil {
 		return humane.Wrap(err, "failed to write CA private key",
 			"ensure the directory you are trying to create exists and is writable by the agent user",
 		)
@@ -288,6 +291,13 @@ func loadCA() (*x509.Certificate, *ecdsa.PrivateKey, humane.Error) {
 	}
 
 	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		return nil, nil, humane.New("failed to decode CA certificate",
+			"this should never happen",
+			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+		)
+	}
+
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to parse CA certificate")
@@ -328,8 +338,7 @@ func fileExists(path string) bool {
 }
 
 // writePEM writes a PEM-encoded block with the given type and bytes to the specified file path, returning any error encountered.
-func writePEM(path, typ string, bytes []byte) humane.Error {
-	pemData := pem.EncodeToMemory(&pem.Block{Type: typ, Bytes: bytes})
+func writePEM(path string, pemData []byte) humane.Error {
 	err := os.WriteFile(path, pemData, 0600)
 
 	return humane.Wrap(err, "failed to write PEM file",
