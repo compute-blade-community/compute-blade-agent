@@ -35,10 +35,8 @@ criticalLedColor:
 # Enable/disable stealth mode; turns off all LEDs on the blade
 stealth_mode: false
 
-
 # Simple fan-speed controls based on the SoC temperature
 fan_controller:
-  # For now, this is only supporting a two-step configuration.
   steps:
     - temperature: 45
       percent: 40
