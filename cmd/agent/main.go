@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -15,11 +14,10 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
-	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/uptime-induestries/compute-blade-agent/internal/agent"
+	"github.com/uptime-induestries/compute-blade-agent/internal/api"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -112,23 +110,12 @@ func main() {
 
 	// Setup GRPC server
 	// FIXME add logging middleware
-	grpcServer := grpc.NewServer()
-	bladeapiv1alpha1.RegisterBladeAgentServiceServer(grpcServer, agent.NewGrpcServiceFor(computebladeAgent))
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		grpcListen, err := net.Listen("unix", viper.GetString("listen.grpc"))
-		if err != nil {
-			log.FromContext(ctx).Error("Failed to create grpc listener", zap.Error(err))
-			cancelCtx(err)
-			return
-		}
-		log.FromContext(ctx).Info("Starting grpc server", zap.String("address", viper.GetString("listen.grpc")))
-		if err := grpcServer.Serve(grpcListen); err != nil && err != grpc.ErrServerStopped {
-			log.FromContext(ctx).Error("Failed to start grpc server", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	grpcServer := api.NewGrpcApiServer(
+		api.WithComputeBladeAgent(computebladeAgent),
+	)
+
+	grpcServer.ServeAsync(ctx, cancelCtx)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
