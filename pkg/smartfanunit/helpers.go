@@ -1,6 +1,6 @@
 package smartfanunit
 
-import "github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+import "github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 
 func float32To24Bit(val float32) proto.Data {
 	// Convert float32 to number with 3 bytes (0.1 precision)

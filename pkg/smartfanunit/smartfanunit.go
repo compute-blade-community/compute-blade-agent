@@ -1,11 +1,11 @@
 package smartfanunit
 
 import (
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 )
 
 const (
-	Baudrate = 115200
+	BaudRate = 115200
 )
 
 func MatchCmd(cmd proto.Command) func(any) bool {

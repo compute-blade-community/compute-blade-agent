@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"github.com/warthog618/gpiod"
 	"github.com/warthog618/gpiod/device/rpi"
 	"go.uber.org/zap"
@@ -192,7 +192,7 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 	defer cancel()
 
 	if smartFanUnitPresent, err := SmartFanUnitPresent(detectCtx, smartFanUnitDev); err == nil && smartFanUnitPresent {
-		log.FromContext(ctx).Error("detected smart fan unit")
+		log.FromContext(ctx).Info("detected smart fan unit")
 		bcm.fanUnit, err = NewSmartFanUnit(smartFanUnitDev)
 		if err != nil {
 			return err
@@ -230,7 +230,7 @@ func (bcm *bcm2711) Run(parentCtx context.Context) error {
 }
 
 func (bcm *bcm2711) handleEdgeButtonEdge(evt gpiod.LineEvent) {
-	// Despite the debounce, we still get multiple events for a single button press
+	// Despite debouncing, we still get multiple events for a single button press
 	// -> This is an in-software debounce to ensure we only get one event per button press
 	select {
 	case bcm.edgeButtonDebounceChan <- struct{}{}:
@@ -424,7 +424,7 @@ func (bcm *bcm2711) updateLEDs() error {
 	ledColorChangeEventCount.Inc()
 
 	// Set frequency to 3*800khz.
-	// we'll bit-bang the data, so we'll need to send 3 bits per bit of data.
+	// we'll bit-bang the data, so we'll need to send 3 bits per one bit of data.
 	bcm.setPwm0Freq(3 * 800000)
 	time.Sleep(10 * time.Microsecond)
 

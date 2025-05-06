@@ -1,17 +1,17 @@
-package eventbus_test
+package events_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/eventbus"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 )
 
 func TestEventBusManySubscribers(t *testing.T) {
-	eb := eventbus.New()
+	eb := events.New()
 
 	// Create a channel and subscribe to a topic without a filter
-	sub0 := eb.Subscribe("topic0", 2, eventbus.MatchAll)
+	sub0 := eb.Subscribe("topic0", 2, events.MatchAll)
 	assert.Equal(t, cap(sub0.C()), 2)
 	assert.Equal(t, len(sub0.C()), 0)
 	defer sub0.Unsubscribe()
@@ -25,12 +25,12 @@ func TestEventBusManySubscribers(t *testing.T) {
 	defer sub1.Unsubscribe()
 
 	// Create a channel and subscribe to another topic
-	sub2 := eb.Subscribe("topic1", 1, eventbus.MatchAll)
+	sub2 := eb.Subscribe("topic1", 1, events.MatchAll)
 	assert.Equal(t, cap(sub2.C()), 1)
 	assert.Equal(t, len(sub2.C()), 0)
 	defer sub2.Unsubscribe()
 
-	sub3 := eb.Subscribe("topic1", 0, eventbus.MatchAll)
+	sub3 := eb.Subscribe("topic1", 0, events.MatchAll)
 	assert.Equal(t, cap(sub3.C()), 0)
 	assert.Equal(t, len(sub3.C()), 0)
 	defer sub3.Unsubscribe()
@@ -56,10 +56,10 @@ func TestEventBusManySubscribers(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
-	eb := eventbus.New()
+	eb := events.New()
 
 	// Create a channel and subscribe to a topic
-	sub := eb.Subscribe("topic", 2, eventbus.MatchAll)
+	sub := eb.Subscribe("topic", 2, events.MatchAll)
 
 	// Unsubscribe from the topic
 	sub.Unsubscribe()

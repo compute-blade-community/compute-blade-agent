@@ -1,16 +1,15 @@
 # Default configuration for the compute-blade-agent
 
-log:
-  mode: production  # production, development
-
 # Listen configuration
 listen:
   metrics: ":9666"
   grpc: /tmp/compute-blade-agent.sock
+  authenticated: false
+  mode: unix # tcp or unix
 
 # Hardware abstraction layer configuration
 hal:
-  # For the default fan unit, fanspeed measurement is causing a tiny bit of CPU laod.
+  # For the default fan unit, fanspeed measurement is causing a tiny bit of CPU load.
   # Sometimes it might not be desired
   rpm_reporting_standard_fan_unit: true
 
@@ -35,14 +34,13 @@ criticalLedColor:
 # Enable/disable stealth mode; turns off all LEDs on the blade
 stealth_mode: false
 
-
 # Simple fan-speed controls based on the SoC temperature
 fan_controller:
-  # For now, this is only supporting a two-step configuration.
   steps:
     - temperature: 45
       percent: 40
     - temperature: 55
       percent: 80
+
 # Critical temperature threshold
 critical_temperature_threshold: 60

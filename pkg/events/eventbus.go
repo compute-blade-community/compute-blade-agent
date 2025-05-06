@@ -1,4 +1,4 @@
-package eventbus
+package events
 
 import (
 	"sync"
@@ -27,7 +27,7 @@ type subscriber struct {
 	closed bool
 }
 
-func MatchAll(any) bool {
+func MatchAll(_ any) bool {
 	return true
 }
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 )
 
 func TestWritePacket(t *testing.T) {

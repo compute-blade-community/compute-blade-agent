@@ -1,4 +1,4 @@
-// This is a driver for the EMC2101 fan controller
+// Package emc2101 is a driver for the EMC2101 fan controller
 // Based on https://ww1.microchip.com/downloads/en/DeviceDoc/2101.pdf
 package emc2101
 
@@ -57,7 +57,6 @@ func (e *emc2101) updateReg(regAddr, setMask, clearMask uint8) error {
 		return nil
 	}
 
-
 	return e.bus.Tx(e.Address, []byte{regAddr, toWrite}, nil)
 }
 
@@ -74,10 +73,10 @@ func (e *emc2101) Init() error {
 	}
 
 	/*
-	0x3 0b100
-	0x4b 0b11111
-	0x4a 0b100000
-	0x4a 0b100000
+		0x3 0b100
+		0x4b 0b11111
+		0x4a 0b100000
+		0x4a 0b100000
 	*/
 
 	// Configure fan spin up to ignore tach input
@@ -126,7 +125,7 @@ func (e *emc2101) FanRPM() (float32, error) {
 		return 0, err
 	}
 
-	var tachCount int = int(high[0])<<8 | int(low[0])
+	var tachCount = int(high[0])<<8 | int(low[0])
 
 	return float32(5400000) / float32(tachCount), nil
 }

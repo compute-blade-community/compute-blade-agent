@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/util"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 )
 
 // LedEngine is the interface for controlling effects on the computeblade RGB LEDs
@@ -36,21 +36,21 @@ type BlinkPattern struct {
 	Delays []time.Duration
 }
 
-func mapBrighnessUint8(brightness float64) uint8 {
+func mapBrightnessUint8(brightness float64) uint8 {
 	return uint8(255.0 * brightness)
 }
 
 func LedColorPurple(brightness float64) led.Color {
 	return led.Color{
-		Red:   mapBrighnessUint8(brightness),
+		Red:   mapBrightnessUint8(brightness),
 		Green: 0,
-		Blue:  mapBrighnessUint8(brightness),
+		Blue:  mapBrightnessUint8(brightness),
 	}
 }
 
 func LedColorRed(brightness float64) led.Color {
 	return led.Color{
-		Red:   mapBrighnessUint8(brightness),
+		Red:   mapBrightnessUint8(brightness),
 		Green: 0,
 		Blue:  0,
 	}
@@ -59,7 +59,7 @@ func LedColorRed(brightness float64) led.Color {
 func LedColorGreen(brightness float64) led.Color {
 	return led.Color{
 		Red:   0,
-		Green: mapBrighnessUint8(brightness),
+		Green: mapBrightnessUint8(brightness),
 		Blue:  0,
 	}
 }
@@ -101,17 +101,7 @@ func NewSlowBlinkPattern(baseColor led.Color, activeColor led.Color) BlinkPatter
 	}
 }
 
-// LedEngineOpts are the options for the LedEngine
-type LedEngineOpts struct {
-	// LedIdx is the index of the LED to control
-	LedIdx uint
-	// Hal is the computeblade hardware abstraction layer
-	Hal hal.ComputeBladeHal
-	// Clock is the clock used for timing
-	Clock util.Clock
-}
-
-func NewLedEngine(opts LedEngineOpts) *ledEngineImpl {
+func NewLedEngine(opts Options) LedEngine {
 	clock := opts.Clock
 	if clock == nil {
 		clock = util.RealClock{}
@@ -119,7 +109,7 @@ func NewLedEngine(opts LedEngineOpts) *ledEngineImpl {
 	return &ledEngineImpl{
 		ledIdx:  opts.LedIdx,
 		hal:     opts.Hal,
-		restart: make(chan struct{}),           // restart channel controls cancelation of any pattern
+		restart: make(chan struct{}),           // restart channel controls cancellation of any pattern
 		pattern: NewStaticPattern(led.Color{}), // Turn off LEDs by default
 		clock:   clock,
 	}

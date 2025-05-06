@@ -8,11 +8,11 @@ import (
 	"io"
 	"sync"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/eventbus"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 	"go.bug.st/serial"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -20,22 +20,30 @@ import (
 
 func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 	// Open the serial port.
-	log.FromContext(ctx).Warn("Opening serial port")
+	log.FromContext(ctx).Info("Opening serial port")
 
 	rwc, err := serial.Open(portName, &serial.Mode{
-		BaudRate: smartfanunit.Baudrate,
+		BaudRate: smartfanunit.BaudRate,
 	})
 	if err != nil {
 		return false, err
 	}
-	log.FromContext(ctx).Warn("Opened serial port")
-	defer rwc.Close()
+	log.FromContext(ctx).Info("Opened serial port")
+	defer func(rwc serial.Port) {
+		err := rwc.Close()
+		if err != nil {
+			log.FromContext(ctx).Warn("Error while closing serial port", zap.Error(err))
+		}
+	}(rwc)
 
 	// Close reader after context is done
 	go func() {
 		<-ctx.Done()
 		log.FromContext(ctx).Warn("Closing serial port")
-		rwc.Close()
+		err := rwc.Close()
+		if err != nil {
+			log.FromContext(ctx).Warn("Error while closing serial port", zap.Error(err))
+		}
 	}()
 
 	// read byte after byte, matching it to the SOF header used by the smart fan unit protocol.
@@ -56,7 +64,7 @@ func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 func NewSmartFanUnit(portName string) (FanUnit, error) {
 	// Open the serial port.
 	rwc, err := serial.Open(portName, &serial.Mode{
-		BaudRate: smartfanunit.Baudrate,
+		BaudRate: smartfanunit.BaudRate,
 	})
 	if err != nil {
 		return nil, err
@@ -64,15 +72,15 @@ func NewSmartFanUnit(portName string) (FanUnit, error) {
 
 	return &smartFanUnit{
 		rwc: rwc,
-		eb:  eventbus.New(),
+		eb:  events.New(),
 	}, nil
 }
 
-var ErrCommunicationFailed = errors.New("communication failed")
+//var ErrCommunicationFailed = errors.New("communication failed") // FIXME: still required or dead code?
 
 const (
-	inboundTopic  = "smartfanunit:inbound"
-	outboundTopic = "smartfanunit:outbound"
+	inboundTopic = "smartfanunit:inbound"
+	//outboundTopic = "smartfanunit:outbound" // FIXME: still required or dead code?
 )
 
 type smartFanUnit struct {
@@ -82,7 +90,7 @@ type smartFanUnit struct {
 	speed   smartfanunit.FanSpeedRPMPacket
 	airflow smartfanunit.AirFlowTemperaturePacket
 
-	eb eventbus.EventBus
+	eb events.EventBus
 }
 
 func (fuc *smartFanUnit) Kind() FanUnitKind {
@@ -126,7 +134,7 @@ func (fuc *smartFanUnit) Run(parentCtx context.Context) error {
 				return nil
 			case pktAny := <-sub.C():
 				rawPkt := pktAny.(proto.Packet)
-				if err := fuc.speed.FromPacket(rawPkt); err != nil && err != proto.ErrChecksumMismatch {
+				if err := fuc.speed.FromPacket(rawPkt); err != nil && !errors.Is(err, proto.ErrChecksumMismatch) {
 					return err
 				}
 				fanSpeed.Set(float64(fuc.speed.RPM))
@@ -144,7 +152,7 @@ func (fuc *smartFanUnit) Run(parentCtx context.Context) error {
 				return nil
 			case pktAny := <-sub.C():
 				rawPkt := pktAny.(proto.Packet)
-				if err := fuc.airflow.FromPacket(rawPkt); err != nil && err != proto.ErrChecksumMismatch {
+				if err := fuc.airflow.FromPacket(rawPkt); err != nil && !errors.Is(err, proto.ErrChecksumMismatch) {
 					return err
 				}
 				airFlowTemperature.Set(float64(fuc.airflow.Temperature))

@@ -4,11 +4,12 @@ package main
 
 import (
 	"context"
-	"machine"
 	"time"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/emc2101"
+	"machine"
+
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/emc2101"
 	"tinygo.org/x/drivers/ws2812"
 )
 
@@ -26,15 +27,15 @@ func main() {
 	err = machine.UART0.Configure(machine.UARTConfig{TX: machine.UART0_TX_PIN, RX: machine.UART0_RX_PIN})
 	if err != nil {
 		println("[!] Failed to initialize UART0:", err.Error())
-		goto errprint
+		goto errPrint
 	}
-	machine.UART0.SetBaudRate(smartfanunit.Baudrate)
+	machine.UART0.SetBaudRate(smartfanunit.BaudRate)
 	err = machine.UART1.Configure(machine.UARTConfig{TX: machine.UART1_TX_PIN, RX: machine.UART1_RX_PIN})
 	if err != nil {
 		println("[!] Failed to initialize UART1:", err.Error())
-		goto errprint
+		goto errPrint
 	}
-	machine.UART1.SetBaudRate(smartfanunit.Baudrate)
+	machine.UART1.SetBaudRate(smartfanunit.BaudRate)
 
 	// Enables fan, DO NOT CHANGE
 	machine.GP16.Configure(machine.PinConfig{Mode: machine.PinOutput})
@@ -57,7 +58,7 @@ func main() {
 	err = emc.Init()
 	if err != nil {
 		println("[!] Failed to initialize emc2101:", err.Error())
-		goto errprint
+		goto errPrint
 	}
 
 	println("[+] IO initialized, starting controller...")
@@ -75,7 +76,7 @@ func main() {
 	err = controller.Run(context.Background())
 
 	// Blinking -> something went wrong
-errprint:
+errPrint:
 	ledState := false
 	for {
 		ledState = !ledState

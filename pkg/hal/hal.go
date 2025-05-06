@@ -3,7 +3,7 @@ package hal
 import (
 	"context"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 )
 
 type FanUnitKind uint8
@@ -49,17 +49,17 @@ type ComputeBladeHal interface {
 	Close() error
 	// SetFanSpeed sets the fan speed in percent
 	SetFanSpeed(speed uint8) error
-	// GetFanSpeed returns the current fan speed in percent (based on moving average)
+	// GetFanRPM returns the current fan speed in percent (based on moving average)
 	GetFanRPM() (float64, error)
 	// SetStealthMode enables/disables stealth mode of the blade (turning on/off the LEDs)
 	SetStealthMode(enabled bool) error
-	// SetLEDs sets the color of the LEDs
+	// SetLed sets the color of the LEDs
 	SetLed(idx uint, color led.Color) error
 	// GetPowerStatus returns the current power status of the blade
 	GetPowerStatus() (PowerStatus, error)
 	// GetTemperature returns the current temperature of the SoC in °C
 	GetTemperature() (float64, error)
-	// GetEdgeButtonPressChan returns a channel emitting edge button press events
+	// WaitForEdgeButtonPress returns a channel emitting edge button press events
 	WaitForEdgeButtonPress(ctx context.Context) error
 }
 

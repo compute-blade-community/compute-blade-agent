@@ -3,19 +3,29 @@ package smartfanunit
 import (
 	"errors"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 )
 
+// Blade -> FanUnit communication
 const (
-	// Blade -> FanUnit
+	// CmdSetFanSpeedPercent sets the fan speed as a percentage, sent from the blade to the fan unit.
 	CmdSetFanSpeedPercent proto.Command = 0x01
-	CmdSetLED             proto.Command = 0x02
 
-	// FanUnit -> Blade, sent in regular intervals
-	NotifyButtonPress        proto.Command = 0xa1
+	// CmdSetLED represents the command to set the LED color, sent from the blade to the fan unit.
+	CmdSetLED proto.Command = 0x02
+)
+
+// FanUnit -> Blade, sent in regular intervals
+const (
+	// NotifyButtonPress represents a command sent from the fan unit to indicate a button press event.
+	NotifyButtonPress proto.Command = 0xa1
+
+	// NotifyAirFlowTemperature represents a command sent from the fan unit to report the current air flow temperature.
 	NotifyAirFlowTemperature proto.Command = 0xa2
-	NotifyFanSpeedRPM        proto.Command = 0xa3
+
+	// NotifyFanSpeedRPM is a command used to report the current fan speed in RPM from the fan unit to the blade.
+	NotifyFanSpeedRPM proto.Command = 0xa3
 )
 
 var ErrInvalidCommand = errors.New("invalid command")
@@ -93,7 +103,7 @@ type AirFlowTemperaturePacket struct {
 func (p *AirFlowTemperaturePacket) Packet() proto.Packet {
 	return proto.Packet{
 		Command: NotifyAirFlowTemperature,
-		Data:    proto.Data(float32To24Bit(p.Temperature)),
+		Data:    float32To24Bit(p.Temperature),
 	}
 }
 

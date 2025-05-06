@@ -4,14 +4,15 @@ package main
 
 import (
 	"context"
-	"machine"
 	"time"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/eventbus"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/emc2101"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/smartfanunit/proto"
+	"machine"
+
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/emc2101"
+	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 	"golang.org/x/sync/errgroup"
 	"tinygo.org/x/drivers"
 	"tinygo.org/x/drivers/ws2812"
@@ -33,7 +34,7 @@ type Controller struct {
 	LeftUART  drivers.UART
 	RightUART drivers.UART
 
-	eb               eventbus.EventBus
+	eb               events.EventBus
 	leftLed          led.Color
 	rightLed         led.Color
 	leftReqFanSpeed  uint8
@@ -43,7 +44,7 @@ type Controller struct {
 }
 
 func (c *Controller) Run(parentCtx context.Context) error {
-	c.eb = eventbus.New()
+	c.eb = events.New()
 
 	c.FanController.Init()
 	c.FanController.SetFanPercent(c.DefaultFanSpeed)
@@ -80,7 +81,7 @@ func (c *Controller) Run(parentCtx context.Context) error {
 	})
 
 	// right blade events
-	println("[+] Starting event listener (righ)")
+	println("[+] Starting event listener (right)")
 	group.Go(func() error {
 		return c.listenEvents(ctx, c.RightUART, rightBladeTopicIn)
 	})
@@ -123,7 +124,7 @@ func (c *Controller) Run(parentCtx context.Context) error {
 	return group.Wait()
 }
 
-// listenEvents reads events from the UART interface and dispatches them to the eventbus
+// listenEvents reads events from the UART interface and dispatches them to the events
 func (c *Controller) listenEvents(ctx context.Context, uart drivers.UART, targetTopic string) error {
 	for {
 		// Read packet from UART; blocks until packet is received
@@ -137,9 +138,9 @@ func (c *Controller) listenEvents(ctx context.Context, uart drivers.UART, target
 	}
 }
 
-// dispatchEvents reads events from the eventbus and writes them to the UART interface
+// dispatchEvents reads events from the events and writes them to the UART interface
 func (c *Controller) dispatchEvents(ctx context.Context, uart drivers.UART, sourceTopic string) error {
-	sub := c.eb.Subscribe(sourceTopic, 4, eventbus.MatchAll)
+	sub := c.eb.Subscribe(sourceTopic, 4, events.MatchAll)
 	defer sub.Unsubscribe()
 	for {
 		select {
@@ -201,9 +202,9 @@ func (c *Controller) metricReporter(ctx context.Context) error {
 func (c *Controller) updateFanSpeed(ctx context.Context) error {
 	var pkt smartfanunit.SetFanSpeedPercentPacket
 
-	subLeft := c.eb.Subscribe(leftBladeTopicIn, 1, eventbus.MatchAll)
+	subLeft := c.eb.Subscribe(leftBladeTopicIn, 1, events.MatchAll)
 	defer subLeft.Unsubscribe()
-	subRight := c.eb.Subscribe(rightBladeTopicIn, 1, eventbus.MatchAll)
+	subRight := c.eb.Subscribe(rightBladeTopicIn, 1, events.MatchAll)
 	defer subRight.Unsubscribe()
 
 	for {

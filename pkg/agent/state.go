@@ -6,6 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"go.uber.org/zap"
 )
 
 var (
@@ -17,7 +19,7 @@ var (
 )
 
 type ComputebladeState interface {
-	RegisterEvent(event Event)
+	RegisterEvent(event events.Event)
 	IdentifyActive() bool
 	WaitForIdentifyConfirm(ctx context.Context) error
 	CriticalActive() bool
@@ -28,10 +30,10 @@ type computebladeStateImpl struct {
 	mutex sync.Mutex
 
 	// identifyActive indicates whether the blade is currently in identify mode
-	identifyActive    bool
+	identifyActive      bool
 	identifyConfirmChan chan struct{}
 	// criticalActive indicates whether the blade is currently in critical mode
-	criticalActive    bool
+	criticalActive      bool
 	criticalConfirmChan chan struct{}
 }
 
@@ -42,23 +44,26 @@ func NewComputeBladeState() ComputebladeState {
 	}
 }
 
-func (s *computebladeStateImpl) RegisterEvent(event Event) {
+func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	switch event {
-	case IdentifyEvent:
+	case events.IdentifyEvent:
 		s.identifyActive = true
-	case IdentifyConfirmEvent:
+	case events.IdentifyConfirmEvent:
 		s.identifyActive = false
 		close(s.identifyConfirmChan)
 		s.identifyConfirmChan = make(chan struct{})
-	case CriticalEvent:
+	case events.CriticalEvent:
 		s.criticalActive = true
 		s.identifyActive = false
-	case CriticalResetEvent:
+	case events.CriticalResetEvent:
 		s.criticalActive = false
 		close(s.criticalConfirmChan)
 		s.criticalConfirmChan = make(chan struct{})
+
+	default:
+		zap.L().Warn("Unknown event", zap.String("event", event.String()))
 	}
 
 	// Set identify state metric

@@ -1,0 +1,78 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/sierrasoftworks/humane-errors-go"
+	"go.uber.org/zap"
+)
+
+type BladectlConfig struct {
+	Blades       []NamedBlade `yaml:"blades" mapstructure:"blades"`
+	CurrentBlade string       `yaml:"current-blade" mapstructure:"current-blade"`
+}
+
+type NamedBlade struct {
+	Name  string `yaml:"name" mapstructure:"name"`
+	Blade Blade  `yaml:"blade" mapstructure:"blade"`
+}
+
+type Blade struct {
+	Server string `yaml:"server" mapstructure:"server"`
+}
+
+func (c *BladectlConfig) FindBlade(name string) (*Blade, humane.Error) {
+	if len(name) == 0 {
+		name = c.CurrentBlade
+	}
+
+	for _, blade := range c.Blades {
+		if blade.Name == name {
+			return &blade.Blade, nil
+		}
+	}
+
+	return nil, humane.New("current blade not found in configuration",
+		"ensure you have a current-blade set in your configuration file, or use the --current-blade flag to specify one",
+		"make sure you have a blade with the name you specified in the blades configuration",
+	)
+}
+
+func NewBladectlConfig(server string) *BladectlConfig {
+	hostname, err := os.Hostname()
+	if err != nil {
+		zap.L().Fatal("Failed to extract hostname", zap.Error(err))
+	}
+
+	return &BladectlConfig{
+		Blades: []NamedBlade{
+			{
+				Name: hostname,
+				Blade: Blade{
+					Server: server,
+				},
+			},
+		},
+		CurrentBlade: hostname,
+	}
+}
+
+func EnsureBladectlConfigHome() (string, humane.Error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", humane.Wrap(err, "Failed to extract home directory",
+			"this should never happen",
+			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+		)
+	}
+
+	configDir := filepath.Join(homeDir, ".config", "bladectl")
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return "", humane.Wrap(err, "Failed to create config directory",
+			"ensure the home-directory is writable by the agent user",
+		)
+	}
+
+	return configDir, nil
+}

@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 )
 
 // fails if ComputeBladeHalMock does not implement ComputeBladeHal
 var _ ComputeBladeHal = &ComputeBladeHalMock{}
 
-// ComputeBladeMock implements a mock for the ComputeBladeHal interface
+// ComputeBladeHalMock implements a mock for the ComputeBladeHal interface
 type ComputeBladeHalMock struct {
 	mock.Mock
 }

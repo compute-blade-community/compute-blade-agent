@@ -1,17 +1,16 @@
-// fancontroller_test.go
 package fancontroller_test
 
 import (
 	"testing"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
+	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
 )
 
 func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 	t.Parallel()
 
-	config := fancontroller.FanControllerConfig{
-		Steps: []fancontroller.FanControllerStep{
+	config := fancontroller.Config{
+		Steps: []fancontroller.Step{
 			{Temperature: 20, Percent: 30},
 			{Temperature: 30, Percent: 60},
 		},
@@ -47,8 +46,8 @@ func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 	t.Parallel()
 
-	config := fancontroller.FanControllerConfig{
-		Steps: []fancontroller.FanControllerStep{
+	config := fancontroller.Config{
+		Steps: []fancontroller.Step{
 			{Temperature: 20, Percent: 30},
 			{Temperature: 30, Percent: 60},
 		},
@@ -87,47 +86,38 @@ func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 	testCases := []struct {
 		name   string
-		config fancontroller.FanControllerConfig
+		config fancontroller.Config
 		errMsg string
 	}{
 		{
-			name: "InvalidStepCount",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			name: "Overlapping Step Temperatures",
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
+					{Temperature: 20, Percent: 60},
 					{Temperature: 20, Percent: 30},
 				},
 			},
-			errMsg: "exactly two steps must be defined",
+			errMsg: "steps must have strictly increasing temperatures",
 		},
 		{
-			name: "InvalidStepTemperatures",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
-					{Temperature: 30, Percent: 60},
-					{Temperature: 20, Percent: 30},
-				},
-			},
-			errMsg: "step 1 temperature must be lower than step 2 temperature",
-		},
-		{
-			name: "InvalidStepSpeeds",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			name: "Percentages must not decrease",
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
 					{Temperature: 20, Percent: 60},
 					{Temperature: 30, Percent: 30},
 				},
 			},
-			errMsg: "step 1 speed must be lower than step 2 speed",
+			errMsg: "fan percent must not decrease",
 		},
 		{
 			name: "InvalidSpeedRange",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
 					{Temperature: 20, Percent: 10},
 					{Temperature: 30, Percent: 200},
 				},
 			},
-			errMsg: "speed must be between 0 and 100",
+			errMsg: "fan percent must be between 0 and 100",
 		},
 	}
 

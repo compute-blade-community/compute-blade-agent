@@ -6,7 +6,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 	"github.com/warthog618/gpiod"
 	"github.com/warthog618/gpiod/device/rpi"
 )
@@ -14,9 +14,9 @@ import (
 type standardFanUnitBcm2711 struct {
 	GpioChip0           *gpiod.Chip
 	SetFanSpeedPwmFunc  func(speed uint8) error
-	DisableRPMreporting bool
+	DisableRpmReporting bool
 
-	// Fan tach input
+	// Fan tachometer input
 	fanEdgeLine      *gpiod.Line
 	lastFanEdgeEvent *gpiod.LineEvent
 	fanRpm           float64
@@ -33,7 +33,7 @@ func (fu standardFanUnitBcm2711) Run(ctx context.Context) error {
 	var err error
 	fanUnit.WithLabelValues("standard").Set(1)
 
-	// Register edge event handler for fan tach input
+	// Register edge event handler for fan tachometer input
 	if !fu.DisableRPMreporting {
 		fu.fanEdgeLine, err = fu.GpioChip0.RequestLine(
 			rpi.GPIO13,
@@ -51,7 +51,7 @@ func (fu standardFanUnitBcm2711) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
-// handleFanEdge handles an edge event on the fan tach input for the standard fan unite.
+// handleFanEdge handles an edge event on the fan tachometer input for the standard fan unite.
 // Exponential moving average is used to smooth out the fan speed.
 func (fu *standardFanUnitBcm2711) handleFanEdge(evt gpiod.LineEvent) {
 	// Ensure we're always storing the last event

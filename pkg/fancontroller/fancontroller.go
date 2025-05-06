@@ -2,7 +2,10 @@ package fancontroller
 
 import (
 	"fmt"
+	"sort"
 	"sync"
+
+	"github.com/sierrasoftworks/humane-errors-go"
 )
 
 type FanController interface {
@@ -10,45 +13,46 @@ type FanController interface {
 	GetFanSpeed(temperature float64) uint8
 }
 
-type FanOverrideOpts struct {
-	Percent uint8 `mapstructure:"speed"`
-}
-
-type FanControllerStep struct {
-	// Temperature is the temperature to react to
-	Temperature float64 `mapstructure:"temperature"`
-	// Percent is the fan speed in percent
-	Percent uint8 `mapstructure:"percent"`
-}
-
-// FanController configures a fan controller for the computeblade
-type FanControllerConfig struct {
-	// Steps defines the temperature/speed steps for the fan controller
-	Steps []FanControllerStep `mapstructure:"steps"`
-}
-
 // FanController is a simple fan controller that reacts to temperature changes with a linear function
 type fanControllerLinear struct {
-	mu       sync.Mutex
+	mu           sync.Mutex
 	overrideOpts *FanOverrideOpts
-	config   FanControllerConfig
+	config       Config
 }
 
-// NewFanControllerLinear creates a new FanControllerLinear
-func NewLinearFanController(config FanControllerConfig) (FanController, error) {
+// NewLinearFanController creates a new FanControllerLinear
+func NewLinearFanController(config Config) (FanController, humane.Error) {
+	steps := config.Steps
 
-	// Validate config for a very simple linear fan controller
-	if len(config.Steps) != 2 {
-		return nil, fmt.Errorf("exactly two steps must be defined")
+	// Sort steps by temperature
+	sort.Slice(steps, func(i, j int) bool {
+		return steps[i].Temperature < steps[j].Temperature
+	})
+
+	for i := 0; i < len(steps)-1; i++ {
+		curr := steps[i]
+		next := steps[i+1]
+
+		if curr.Temperature >= next.Temperature {
+			return nil, humane.New("steps must have strictly increasing temperatures",
+				"Ensure that the temperatures are in ascending order and the ranges do not overlap",
+				fmt.Sprintf("Ensure defined temperature stepd %.2f is >= %.2f", curr.Temperature, next.Temperature),
+			)
+		}
+		if curr.Percent > next.Percent {
+			return nil, humane.New("fan percent must not decrease",
+				"Ensure that the fan percentages are not decreasing for higher temperatures",
+				fmt.Sprintf("Temperature %.2f is defined at %d%% and must be >= %d%% defined for temperature %.2f", curr.Temperature, curr.Percent, next.Percent, next.Temperature),
+			)
+		}
 	}
-	if config.Steps[0].Temperature > config.Steps[1].Temperature {
-		return nil, fmt.Errorf("step 1 temperature must be lower than step 2 temperature")
-	}
-	if config.Steps[0].Percent > config.Steps[1].Percent {
-		return nil, fmt.Errorf("step 1 speed must be lower than step 2 speed")
-	}
-	if config.Steps[0].Percent > 100 || config.Steps[1].Percent > 100 {
-		return nil, fmt.Errorf("speed must be between 0 and 100")
+
+	for _, step := range steps {
+		if step.Percent > 100 || step.Percent < 0 {
+			return nil, humane.New("fan percent must be between 0 and 100",
+				fmt.Sprintf("Ensure your fan percentage is 0 < %d < 100", step.Percent),
+			)
+		}
 	}
 
 	return &fanControllerLinear{
