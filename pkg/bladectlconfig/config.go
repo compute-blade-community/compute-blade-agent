@@ -15,14 +15,14 @@ type NamedBlade struct {
 }
 
 type Blade struct {
-	Server                   string      `yaml:"server" mapstructure:"server"`
-	CertificateAuthorityData string      `yaml:"certificate-authority-data,omitempty" mapstructure:"certificate-authority-data,omitempty"`
-	Certificate              Certificate `yaml:"cert,omitempty" mapstructure:"cert,omitempty"`
+	Server      string      `yaml:"server" mapstructure:"server"`
+	Certificate Certificate `yaml:"cert,omitempty" mapstructure:"cert,omitempty"`
 }
 
 type Certificate struct {
-	ClientCertificateData string `yaml:"client-certificate-data" mapstructure:"client-certificate-data"`
-	ClientKeyData         string `yaml:"client-key-data" mapstructure:"client-key-data"`
+	CertificateAuthorityData string `yaml:"certificate-authority-data,omitempty" mapstructure:"certificate-authority-data,omitempty"`
+	ClientCertificateData    string `yaml:"client-certificate-data,omitempty" mapstructure:"client-certificate-data,omitempty"`
+	ClientKeyData            string `yaml:"client-key-data,omitempty" mapstructure:"client-key-data,omitempty"`
 }
 
 func FindCurrentBlade(config BladectlConfig) (*Blade, humane.Error) {

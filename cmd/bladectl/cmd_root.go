@@ -72,22 +72,24 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		var creds credentials.TransportCredentials
-		if blade.Certificate.ClientCertificateData == "" {
-			creds = insecure.NewCredentials()
-		} else {
+		// Create our gRPC Transport Credentials
+		creds := insecure.NewCredentials()
+		certData := blade.Certificate
+
+		// If we're presented with certificate data in the config, we try to create a mTLS connection
+		if certData.ClientCertificateData != "" && certData.ClientKeyData != "" && certData.CertificateAuthorityData == "" {
 			// Decode base64 certificate, key, and CA
-			certPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientCertificateData)
+			certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
 			if err != nil {
 				return fmt.Errorf("invalid base64 client cert: %w", err)
 			}
 
-			keyPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientKeyData)
+			keyPEM, err := base64.StdEncoding.DecodeString(certData.ClientKeyData)
 			if err != nil {
 				return fmt.Errorf("invalid base64 client key: %w", err)
 			}
 
-			caPEM, err := base64.StdEncoding.DecodeString(blade.CertificateAuthorityData)
+			caPEM, err := base64.StdEncoding.DecodeString(certData.CertificateAuthorityData)
 			if err != nil {
 				return fmt.Errorf("invalid base64 CA cert: %w", err)
 			}
@@ -112,7 +114,7 @@ var rootCmd = &cobra.Command{
 			creds = credentials.NewTLS(tlsConfig)
 		}
 
-		conn, err := grpc.Dial(blade.Server, grpc.WithTransportCredentials(creds))
+		conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(creds))
 		if err != nil {
 			return fmt.Errorf(
 				humane.Wrap(err,

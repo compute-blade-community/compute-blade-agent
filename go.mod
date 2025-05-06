@@ -1,10 +1,11 @@
 module github.com/uptime-induestries/compute-blade-agent
 
-go 1.22
+go 1.23.0
 
-toolchain go1.22.5
+toolchain go1.24.0
 
 require (
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20241125132722-d032d7dd359e
 	github.com/spf13/cobra v1.6.1
@@ -13,15 +14,16 @@ require (
 	github.com/warthog618/gpiod v0.8.1
 	go.bug.st/serial v1.6.1
 	go.uber.org/zap v1.24.0
-	golang.org/x/sync v0.2.0
-	google.golang.org/grpc v1.56.2
-	google.golang.org/protobuf v1.31.0
+	golang.org/x/sync v0.12.0
+	google.golang.org/grpc v1.67.1
+	google.golang.org/protobuf v1.36.6
+	gopkg.in/yaml.v3 v3.0.1
 	tinygo.org/x/drivers v0.26.0
 )
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/creack/goselect v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -45,10 +47,9 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

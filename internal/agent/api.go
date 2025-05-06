@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 
+	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/sierrasoftworks/humane-errors-go"
 	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/certs"
@@ -39,7 +40,6 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 	}
 
 	grpcOpts := make([]grpc.ServerOption, 0)
-
 	if service.authenticated {
 		// Load server's certificate and private key
 		cert, certPool, err := certs.GenerateServerCert(ctx, service.listenAddr)
@@ -60,6 +60,11 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 	}
 
+	// Add Logging Middleware
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(log.InterceptorLogger(zap.L()))))
+	grpcOpts = append(grpcOpts, grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(log.InterceptorLogger(zap.L()))))
+
+	// Make server
 	service.server = grpc.NewServer(grpcOpts...)
 	bladeapiv1alpha1.RegisterBladeAgentServiceServer(service.server, service)
 
@@ -88,7 +93,6 @@ func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
 		)
 	}
 
-	// FIXME add logging middleware
 	grpcListen, err := net.Listen(s.listenMode, s.listenAddr)
 	if err != nil {
 		return humane.Wrap(err, "failed to create grpc listener",
