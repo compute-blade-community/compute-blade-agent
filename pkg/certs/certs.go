@@ -20,6 +20,7 @@ import (
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/bladectlconfig"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	"github.com/uptime-induestries/compute-blade-agent/pkg/util"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
@@ -160,11 +161,11 @@ func NewBladectlConfig(bladeName, apiPort string, caPEM []byte, clientCertDER []
 			{
 				Name: bladeName,
 				Blade: bladectlconfig.Blade{
-					Server:                   fmt.Sprintf("localhost:%s", apiPort),
-					CertificateAuthorityData: base64.StdEncoding.EncodeToString(caPEM),
+					Server: fmt.Sprintf("localhost:%s", apiPort),
 					Certificate: bladectlconfig.Certificate{
-						ClientCertificateData: base64.StdEncoding.EncodeToString(clientCertDER),
-						ClientKeyData:         base64.StdEncoding.EncodeToString(clientKeyDER),
+						CertificateAuthorityData: base64.StdEncoding.EncodeToString(caPEM),
+						ClientCertificateData:    base64.StdEncoding.EncodeToString(clientCertDER),
+						ClientKeyData:            base64.StdEncoding.EncodeToString(clientKeyDER),
 					},
 				},
 			},
@@ -181,10 +182,25 @@ func generateCertificate(commonName string, isServer bool) (caPEM, certPEM, keyP
 
 	clientKey, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 
-	var extKeyUsage []x509.ExtKeyUsage
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, nil, nil, humane.Wrap(err, "failed to extract hostname",
+			"this should never happen",
+			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+		)
+	}
 
+	var extKeyUsage []x509.ExtKeyUsage
+	var hostIps []net.IP
 	if isServer {
 		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+
+		if hostIps, err = util.GetHostIPs(); err != nil {
+			return nil, nil, nil, humane.Wrap(err, "failed to extract server IPs",
+				"this should never happen",
+				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			)
+		}
 	} else {
 		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 	}
@@ -198,7 +214,8 @@ func generateCertificate(commonName string, isServer bool) (caPEM, certPEM, keyP
 		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage: extKeyUsage,
-		DNSNames:    []string{"localhost"},
+		DNSNames:    []string{"localhost", hostname, fmt.Sprintf("%s.local", hostname)},
+		IPAddresses: hostIps,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCert, &clientKey.PublicKey, caKey)

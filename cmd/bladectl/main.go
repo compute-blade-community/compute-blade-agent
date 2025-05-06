@@ -18,8 +18,8 @@ const (
 )
 
 var (
-	grpcAddr string
-	timeout  time.Duration
+	bladeName string
+	timeout   time.Duration
 
 	Version string
 	Commit  string
@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&grpcAddr, "addr", "unix:///tmp/compute-blade-agent.sock", "address of the compute-blade-agent gRPC server")
+	rootCmd.PersistentFlags().StringVar(&bladeName, "blade", "", "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "timeout for gRPC requests")
 }
 

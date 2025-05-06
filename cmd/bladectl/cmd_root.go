@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -77,7 +78,7 @@ var rootCmd = &cobra.Command{
 		certData := blade.Certificate
 
 		// If we're presented with certificate data in the config, we try to create a mTLS connection
-		if certData.ClientCertificateData != "" && certData.ClientKeyData != "" && certData.CertificateAuthorityData == "" {
+		if certData.ClientCertificateData != "" && certData.ClientKeyData != "" && certData.CertificateAuthorityData != "" {
 			// Decode base64 certificate, key, and CA
 			certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
 			if err != nil {
@@ -106,9 +107,15 @@ var rootCmd = &cobra.Command{
 				return fmt.Errorf("failed to append CA certificate")
 			}
 
+			serverName, _, err := net.SplitHostPort(blade.Server)
+			if err != nil {
+				return fmt.Errorf("failed to parse server address: %w", err)
+			}
+
 			tlsConfig := &tls.Config{
 				Certificates: []tls.Certificate{tlsCert},
 				RootCAs:      caPool,
+				ServerName:   serverName,
 			}
 
 			creds = credentials.NewTLS(tlsConfig)
