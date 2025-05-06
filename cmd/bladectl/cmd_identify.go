@@ -44,11 +44,12 @@ func runIdentity(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Check if we should wait for the identify state to be confirmed
-	if wait {
-		_, err := client.WaitForIdentifyConfirm(ctx, &emptypb.Empty{})
-		if err != nil {
-			return humane.Wrap(err, "unable to wait for confirmation", "ensure the compute-blade agent is running and responsive to requests", "check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'")
-		}
+	if !wait {
+		return nil
+	}
+
+	if _, err := client.WaitForIdentifyConfirm(ctx, &emptypb.Empty{}); err != nil {
+		return humane.Wrap(err, "unable to wait for confirmation", "ensure the compute-blade agent is running and responsive to requests", "check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'")
 	}
 
 	return nil

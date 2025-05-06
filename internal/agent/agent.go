@@ -21,72 +21,21 @@ var (
 	eventCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "computeblade_agent",
 		Name:      "events_count",
-		Help:      "ComputeBlade Agent internal event handler statistics (handled events)",
+		Help:      "ComputeBlade agent internal event handler statistics (handled events)",
 	}, []string{"type"})
 
 	// droppedEventCounter is a prometheus counter that counts the number of events dropped by the agent
 	droppedEventCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "computeblade_agent",
 		Name:      "events_dropped_count",
-		Help:      "ComputeBlade Agent internal event handler statistics (dropped events)",
+		Help:      "ComputeBlade agent internal event handler statistics (dropped events)",
 	}, []string{"type"})
 )
 
-type Event int
-
-const (
-	NoopEvent = iota
-	IdentifyEvent
-	IdentifyConfirmEvent
-	CriticalEvent
-	CriticalResetEvent
-	EdgeButtonEvent
-)
-
-func (e Event) String() string {
-	switch e {
-	case NoopEvent:
-		return "noop"
-	case IdentifyEvent:
-		return "identify"
-	case IdentifyConfirmEvent:
-		return "identify_confirm"
-	case CriticalEvent:
-		return "critical"
-	case CriticalResetEvent:
-		return "critical_reset"
-	case EdgeButtonEvent:
-		return "edge_button"
-	default:
-		return "unknown"
-	}
-}
-
-type ComputeBladeAgentConfig struct {
-	// IdleLedColor is the color of the edge LED when the blade is idle mode
-	IdleLedColor led.Color `mapstructure:"idle_led_color"`
-	// IdentifyLedColor is the color of the edge LED when the blade is in identify mode
-	IdentifyLedColor led.Color `mapstructure:"identify_led_color"`
-	// CriticalLedColor is the color of the top(!) LED when the blade is in critical mode.
-	// In the circumstance when >1 blades are in critical mode, the identidy function can be used to find the right blade
-	CriticalLedColor led.Color `mapstructure:"critical_led_color"`
-
-	// StealthModeEnabled indicates whether stealth mode is enabled
-	StealthModeEnabled bool `mapstructure:"stealth_mode"`
-
-	// Critical temperature of the compute blade (used to trigger critical mode)
-	CriticalTemperatureThreshold uint `mapstructure:"critical_temperature_threshold"`
-
-	// FanSpeed allows to set a fixed fan speed (in percent)
-	FanSpeed *fancontroller.FanOverrideOpts `mapstructure:"fan_speed"`
-	// FanControllerConfig is the configuration of the fan controller
-	FanControllerConfig fancontroller.FanControllerConfig `mapstructure:"fan_controller"`
-
-	ComputeBladeHalOpts hal.ComputeBladeHalOpts `mapstructure:"hal"`
-}
-
 // ComputeBladeAgent implements the core-logic of the agent. It is responsible for handling events and interfacing with the hardware.
 type ComputeBladeAgent interface {
+	// RunAsync dispatches the agent until the context is canceled or an error occurs
+	RunAsync(ctx context.Context, cancel context.CancelCauseFunc)
 	// Run dispatches the agent and blocks until the context is canceled or an error occurs
 	Run(ctx context.Context) error
 	// EmitEvent emits an event to the agent
@@ -126,17 +75,11 @@ func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (Co
 		LedIdx: hal.LedEdge,
 		Hal:    blade,
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	topLedEngine := ledengine.NewLedEngine(ledengine.LedEngineOpts{
 		LedIdx: hal.LedTop,
 		Hal:    blade,
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	fanController, err := fancontroller.NewLinearFanController(opts.FanControllerConfig)
 	if err != nil {
@@ -155,6 +98,17 @@ func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (Co
 			10,
 		), // backlog of 10 events. They should process fast but we e.g. don't want to miss button presses
 	}, nil
+}
+
+func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.CancelCauseFunc) {
+	go func() {
+		log.FromContext(ctx).Info("Starting agent")
+		err := a.Run(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			log.FromContext(ctx).Error("Failed to run agent", zap.Error(err))
+			cancel(err)
+		}
+	}()
 }
 
 func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
@@ -177,7 +131,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	go func() {
 		defer wg.Done()
 		log.FromContext(ctx).Info("Starting HAL")
-		if err := a.blade.Run(ctx); err != nil && err != context.Canceled {
+		if err := a.blade.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.FromContext(ctx).Error("HAL failed", zap.Error(err))
 			cancelCtx(err)
 		}
@@ -190,7 +144,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		log.FromContext(ctx).Info("Starting edge button event handler")
 		for {
 			err := a.blade.WaitForEdgeButtonPress(ctx)
-			if err != nil && err != context.Canceled {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				log.FromContext(ctx).Error("Edge button event handler failed", zap.Error(err))
 				cancelCtx(err)
 			} else if err != nil {
@@ -211,7 +165,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		defer wg.Done()
 		log.FromContext(ctx).Info("Starting top LED engine")
 		err := a.runTopLedEngine(ctx)
-		if err != nil && err != context.Canceled {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.FromContext(ctx).Error("Top LED engine failed", zap.Error(err))
 			cancelCtx(err)
 		}
@@ -223,7 +177,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		defer wg.Done()
 		log.FromContext(ctx).Info("Starting edge LED engine")
 		err := a.runEdgeLedEngine(ctx)
-		if err != nil && err != context.Canceled {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.FromContext(ctx).Error("Edge LED engine failed", zap.Error(err))
 			cancelCtx(err)
 		}
@@ -235,7 +189,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		defer wg.Done()
 		log.FromContext(ctx).Info("Starting fan controller")
 		err := a.runFanController(ctx)
-		if err != nil && err != context.Canceled {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.FromContext(ctx).Error("Fan Controller Failed", zap.Error(err))
 			cancelCtx(err)
 		}
@@ -252,7 +206,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 				return
 			case event := <-a.eventChan:
 				err := a.handleEvent(ctx, event)
-				if err != nil && err != context.Canceled {
+				if err != nil && !errors.Is(err, context.Canceled) {
 					log.FromContext(ctx).Error("Event handler failed", zap.Error(err))
 					cancelCtx(err)
 				}
@@ -309,11 +263,12 @@ func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event Event) er
 			event = Event(IdentifyConfirmEvent)
 		}
 		select {
-		case a.eventChan <- Event(event):
+		case a.eventChan <- event:
 		default:
 			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
 			droppedEventCounter.WithLabelValues(event.String()).Inc()
 		}
+	case NoopEvent:
 	}
 
 	return nil

@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	humane "github.com/sierrasoftworks/humane-errors-go"
-	"github.com/spf13/cobra"
-	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/sierrasoftworks/humane-errors-go"
+	"github.com/spf13/cobra"
+	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var rootCmd = &cobra.Command{
@@ -23,14 +26,26 @@ var rootCmd = &cobra.Command{
 
 		// setup signal handler channels
 		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		go func() {
-			// Wait for context cancel or signal
 			select {
+			// Wait for context cancel
 			case <-ctx.Done():
-			case <-sigs:
-				// On signal, cancel context
-				cancelCtx()
+
+			// Wait for signal
+			case sig := <-sigs:
+				switch sig {
+				case syscall.SIGTERM:
+					fallthrough
+				case syscall.SIGINT:
+					fallthrough
+				case syscall.SIGQUIT:
+					// On terminate signal, cancel context causing the program to terminate
+					cancelCtx()
+
+				default:
+					log.FromContext(ctx).Warn("Received unknown signal", zap.String("signal", sig.String()))
+				}
 			}
 		}()
 
@@ -38,8 +53,8 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return humane.Wrap(err, "failed to dial grpc server", "ensure the gRPC server you are trying to connect to is running and the address is correct")
 		}
+		
 		client := bladeapiv1alpha1.NewBladeAgentServiceClient(conn)
-
 		cmd.SetContext(clientIntoContext(ctx, client))
 		return nil
 	},

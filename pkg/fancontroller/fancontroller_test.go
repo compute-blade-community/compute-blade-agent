@@ -91,33 +91,24 @@ func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 		errMsg string
 	}{
 		{
-			name: "InvalidStepCount",
+			name: "Overlapping Step Temperatures",
 			config: fancontroller.FanControllerConfig{
 				Steps: []fancontroller.FanControllerStep{
+					{Temperature: 20, Percent: 60},
 					{Temperature: 20, Percent: 30},
 				},
 			},
-			errMsg: "exactly two steps must be defined",
+			errMsg: "steps must have strictly increasing temperatures",
 		},
 		{
-			name: "InvalidStepTemperatures",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
-					{Temperature: 30, Percent: 60},
-					{Temperature: 20, Percent: 30},
-				},
-			},
-			errMsg: "step 1 temperature must be lower than step 2 temperature",
-		},
-		{
-			name: "InvalidStepSpeeds",
+			name: "Percentages must not decrease",
 			config: fancontroller.FanControllerConfig{
 				Steps: []fancontroller.FanControllerStep{
 					{Temperature: 20, Percent: 60},
 					{Temperature: 30, Percent: 30},
 				},
 			},
-			errMsg: "step 1 speed must be lower than step 2 speed",
+			errMsg: "fan percent must not decrease",
 		},
 		{
 			name: "InvalidSpeedRange",
@@ -127,7 +118,7 @@ func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 					{Temperature: 30, Percent: 200},
 				},
 			},
-			errMsg: "speed must be between 0 and 100",
+			errMsg: "fan percent must be between 0 and 100",
 		},
 	}
 

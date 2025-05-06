@@ -53,13 +53,13 @@ func NewLinearFanController(config FanControllerConfig) (FanController, humane.E
 		if curr.Temperature >= next.Temperature {
 			return nil, humane.New("steps must have strictly increasing temperatures",
 				"Ensure that the temperatures are in ascending order and the ranges do not overlap",
-				fmt.Sprintf("Ensure defined temperature stepd %d is >= %d", curr.Temperature, next.Temperature),
+				fmt.Sprintf("Ensure defined temperature stepd %.2f is >= %.2f", curr.Temperature, next.Temperature),
 			)
 		}
 		if curr.Percent > next.Percent {
 			return nil, humane.New("fan percent must not decrease",
 				"Ensure that the fan percentages are not decreasing for higher temperatures",
-				fmt.Sprintf("Temperature %d is defined at %d%% and must be >= %d%% defined for temperature %d", curr.Temperature, curr.Percent, next.Percent, next.Temperature),
+				fmt.Sprintf("Temperature %.2f is defined at %d%% and must be >= %d%% defined for temperature %.2f", curr.Temperature, curr.Percent, next.Percent, next.Temperature),
 			)
 		}
 	}

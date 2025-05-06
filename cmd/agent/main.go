@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -15,7 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"github.com/uptime-induestries/compute-blade-agent/internal/agent"
-	"github.com/uptime-induestries/compute-blade-agent/internal/api"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
@@ -27,8 +27,6 @@ var (
 )
 
 func main() {
-	var wg sync.WaitGroup
-
 	// Setup configuration
 	viper.SetConfigType("yaml")
 
@@ -69,62 +67,93 @@ func main() {
 	// load configuration
 	var cbAgentConfig agent.ComputeBladeAgentConfig
 	if err := viper.Unmarshal(&cbAgentConfig); err != nil {
-		log.FromContext(ctx).Error("Failed to load configuration", zap.Error(err))
 		cancelCtx(err)
+		log.FromContext(ctx).Fatal("Failed to load configuration", zap.Error(err))
 	}
 
 	// setup stop signal handlers
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	wg.Add(1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
-		defer wg.Done()
-		// Wait for context cancel or signal
 		select {
+		// Wait for context cancel
 		case <-ctx.Done():
+
+		// Wait for signal
 		case sig := <-sigs:
-			// On signal, cancel context
-			cancelCtx(fmt.Errorf("signal %s received", sig))
+			switch sig {
+			case syscall.SIGTERM:
+				fallthrough
+			case syscall.SIGINT:
+				fallthrough
+			case syscall.SIGQUIT:
+				// On terminate signal, cancel context causing the program to terminate
+				cancelCtx(fmt.Errorf("signal %s received", sig))
+
+			default:
+				log.FromContext(ctx).Warn("Received unknown signal", zap.String("signal", sig.String()))
+			}
 		}
 	}()
 
 	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit), zap.String("date", Date))
 	computebladeAgent, err := agent.NewComputeBladeAgent(ctx, cbAgentConfig)
 	if err != nil {
-		log.FromContext(ctx).Error("Failed to create agent", zap.Error(err))
 		cancelCtx(err)
-		os.Exit(1)
+		log.FromContext(ctx).Fatal("Failed to create agent", zap.Error(err))
 	}
 
 	// Run agent
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting agent")
-		err := computebladeAgent.Run(ctx)
-		if err != nil && err != context.Canceled {
-			log.FromContext(ctx).Error("Failed to run agent", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	computebladeAgent.RunAsync(ctx, cancelCtx)
 
 	// Setup GRPC server
-	// FIXME add logging middleware
-	grpcServer := api.NewGrpcApiServer(
-		api.WithComputeBladeAgent(computebladeAgent),
+	grpcServer := agent.NewGrpcApiServer(
+		agent.WithComputeBladeAgent(computebladeAgent),
 	)
 
-	grpcServer.ServeAsync(ctx, cancelCtx)
+	// Run gRPC API
+	grpcServer.ServeAsync(ctx, cancelCtx, &cbAgentConfig.Listen)
 
+	// setup prometheus endpoint
+	promServer := runPrometheusEndpoint(ctx, cancelCtx, &cbAgentConfig.Listen)
+
+	// Wait for done
+	<-ctx.Done()
+
+	var wg sync.WaitGroup
+
+	// Shut-Down GRPC Server
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		<-ctx.Done()
 		log.FromContext(ctx).Info("Shutting down grpc server")
 		grpcServer.GracefulStop()
 	}()
 
-	// setup prometheus endpoint
+	// Shut-Down Prometheus Endpoint
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		shutdownCtx, shutdownCtxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCtxCancel()
+
+		if err := promServer.Shutdown(shutdownCtx); err != nil {
+			log.FromContext(ctx).Error("Failed to shutdown prometheus/pprof server", zap.Error(err))
+		}
+	}()
+
+	wg.Wait()
+
+	// Wait for context cancel
+	if err := ctx.Err(); !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Fatal("Exiting", zap.Error(err))
+	} else {
+		log.FromContext(ctx).Info("Exiting")
+	}
+}
+
+func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *agent.ApiConfig) *http.Server {
 	instrumentationHandler := http.NewServeMux()
 	instrumentationHandler.Handle("/metrics", promhttp.Handler())
 	instrumentationHandler.HandleFunc("/debug/pprof/", pprof.Index)
@@ -132,33 +161,17 @@ func main() {
 	instrumentationHandler.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	instrumentationHandler.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	instrumentationHandler.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	server := &http.Server{Addr: ":9666", Handler: instrumentationHandler}
-	wg.Add(1)
+
+	server := &http.Server{Addr: apiConfig.Metrics, Handler: instrumentationHandler}
+
+	// Run Prometheus Endpoint
 	go func() {
-		defer wg.Done()
 		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.FromContext(ctx).Error("Failed to start prometheus/pprof server", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		err := server.Shutdown(shutdownCtx)
-		if err != nil {
-			log.FromContext(ctx).Error("Failed to shutdown prometheus/pprof server", zap.Error(err))
+			cancel(err)
 		}
 	}()
 
-	// Wait for context cancel
-	wg.Wait()
-	if err := ctx.Err(); err != nil && err != context.Canceled {
-		log.FromContext(ctx).Fatal("Exiting", zap.Error(err))
-	} else {
-		log.FromContext(ctx).Info("Exiting")
-	}
+	return server
 }
