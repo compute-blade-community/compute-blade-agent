@@ -7,3 +7,8 @@ func WithComputeBladeAgent(agent ComputeBladeAgent) GrpcApiServiceOption {
 		service.agent = agent
 	}
 }
+func WithGrpcApiInsecure(insecure bool) GrpcApiServiceOption {
+	return func(service *AgentGrpcService) {
+		service.insecure = insecure
+	}
+}

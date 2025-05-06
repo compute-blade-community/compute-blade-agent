@@ -46,6 +46,7 @@ type ComputeBladeAgentConfig struct {
 }
 
 type ApiConfig struct {
-	Metrics string `mapstructure:"metrics"`
-	Grpc    string `mapstructure:"grpc"`
+	Metrics      string `mapstructure:"metrics"`
+	Grpc         string `mapstructure:"grpc"`
+	GrpcInsecure bool   `mapstructure:"grpc_insecure"`
 }

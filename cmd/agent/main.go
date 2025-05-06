@@ -107,8 +107,9 @@ func main() {
 	computebladeAgent.RunAsync(ctx, cancelCtx)
 
 	// Setup GRPC server
-	grpcServer := agent.NewGrpcApiServer(
+	grpcServer := agent.NewGrpcApiServer(ctx,
 		agent.WithComputeBladeAgent(computebladeAgent),
+		agent.WithGrpcApiInsecure(cbAgentConfig.Listen.GrpcInsecure),
 	)
 
 	// Run gRPC API

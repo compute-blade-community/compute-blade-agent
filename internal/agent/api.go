@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 
@@ -11,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -20,19 +22,43 @@ import (
 // The type allows for serving gRPC requests and gracefully shutting down the server.
 type AgentGrpcService struct {
 	bladeapiv1alpha1.UnimplementedBladeAgentServiceServer
-	agent  ComputeBladeAgent
-	server *grpc.Server
+	agent    ComputeBladeAgent
+	server   *grpc.Server
+	insecure bool
 }
 
 // NewGrpcApiServer creates a new gRPC service
-func NewGrpcApiServer(options ...GrpcApiServiceOption) *AgentGrpcService {
+func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *AgentGrpcService {
 	service := &AgentGrpcService{}
 
 	for _, option := range options {
 		option(service)
 	}
 
-	service.server = grpc.NewServer()
+	grpcOpts := make([]grpc.ServerOption, 0)
+
+	if !service.insecure {
+		// Load server's certificate and private key
+		cert, certPool, err := getTLSCerts(ctx)
+		if err != nil {
+			log.FromContext(ctx).Fatal("failed to load server key pair",
+				zap.Error(err),
+				zap.String("cause", err.Cause().Error()),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
+
+		// Create the TLS config that enforces mTLS for client authentication
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+		}
+
+		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	}
+
+	service.server = grpc.NewServer(grpcOpts...)
 	bladeapiv1alpha1.RegisterBladeAgentServiceServer(service.server, service)
 
 	return service
