@@ -19,3 +19,21 @@ func WithListenAddr(server string) GrpcApiServiceOption {
 		service.listenAddr = server
 	}
 }
+
+func WithListenMode(mode string) GrpcApiServiceOption {
+	return func(service *AgentGrpcService) {
+		service.listenMode = mode
+	}
+}
+
+func WithTCP() GrpcApiServiceOption {
+	return func(service *AgentGrpcService) {
+		service.listenMode = "tcp"
+	}
+}
+
+func WithUnixSocket() GrpcApiServiceOption {
+	return func(service *AgentGrpcService) {
+		service.listenMode = "unix"
+	}
+}

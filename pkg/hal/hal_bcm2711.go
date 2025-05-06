@@ -192,7 +192,7 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 	defer cancel()
 
 	if smartFanUnitPresent, err := SmartFanUnitPresent(detectCtx, smartFanUnitDev); err == nil && smartFanUnitPresent {
-		log.FromContext(ctx).Error("detected smart fan unit")
+		log.FromContext(ctx).Info("detected smart fan unit")
 		bcm.fanUnit, err = NewSmartFanUnit(smartFanUnitDev)
 		if err != nil {
 			return err

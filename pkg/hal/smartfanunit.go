@@ -20,7 +20,7 @@ import (
 
 func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 	// Open the serial port.
-	log.FromContext(ctx).Warn("Opening serial port")
+	log.FromContext(ctx).Info("Opening serial port")
 
 	rwc, err := serial.Open(portName, &serial.Mode{
 		BaudRate: smartfanunit.Baudrate,
@@ -28,7 +28,7 @@ func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	log.FromContext(ctx).Warn("Opened serial port")
+	log.FromContext(ctx).Info("Opened serial port")
 	defer rwc.Close()
 
 	// Close reader after context is done

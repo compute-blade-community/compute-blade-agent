@@ -8,6 +8,7 @@ listen:
   metrics: ":9666"
   grpc: ":8081"
   authenticated: true
+  mode: tcp # tcp or unix
 
 # Hardware abstraction layer configuration
 hal:

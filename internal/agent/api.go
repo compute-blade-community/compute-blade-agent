@@ -27,6 +27,7 @@ type AgentGrpcService struct {
 	server        *grpc.Server
 	authenticated bool
 	listenAddr    string
+	listenMode    string
 }
 
 // NewGrpcApiServer creates a new gRPC service
@@ -88,7 +89,7 @@ func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
 	}
 
 	// FIXME add logging middleware
-	grpcListen, err := net.Listen("unix", s.listenAddr)
+	grpcListen, err := net.Listen(s.listenMode, s.listenAddr)
 	if err != nil {
 		return humane.Wrap(err, "failed to create grpc listener",
 			"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",

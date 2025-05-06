@@ -36,50 +36,7 @@ var (
 // GenerateClientCert generates a client certificate, private key, and CA certificate for secure communication.
 // It takes the client's Common Name as input and returns the certificates and key in PEM encoded format, or an error.
 func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr humane.Error) {
-	caCert, caKey, herr := loadCA()
-	if herr != nil {
-		return nil, nil, nil, herr
-	}
-
-	clientKey, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-
-	clientTemplate := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		Subject: pkix.Name{
-			CommonName: commonName,
-		},
-		NotBefore:   time.Now(),
-		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCert, &clientKey.PublicKey, caKey)
-	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to create client certificate",
-			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-		)
-	}
-
-	clientKeyBytes, err := x509.MarshalECPrivateKey(clientKey)
-	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to marshal client private key",
-			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-		)
-	}
-
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: clientKeyBytes})
-	caPEM, err = os.ReadFile(caPath) // public CA cert (not the key)
-	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to read CA certificate",
-			"ensure the directory you are trying to create exists and is writable by the agent user",
-		)
-	}
-
-	return caPEM, certPEM, keyPEM, nil
+	return generateCertificate(commonName, false)
 }
 
 // GenerateServerCert generates a server TLS certificate and returns it along with a loaded CA certificate pool or an error.
@@ -108,7 +65,7 @@ func GenerateServerCert(ctx context.Context, serverAddr string) (tls.Certificate
 
 	// Generate Server Keys
 	log.FromContext(ctx).Debug("Generating new server certificate...")
-	_, serverCertDER, serverKeyDER, herr := GenerateClientCert("Compute Blade Agent")
+	_, serverCertDER, serverKeyDER, herr := generateCertificate("Compute Blade Agent", true)
 	if herr != nil {
 		return tls.Certificate{}, nil, herr
 	}
@@ -203,7 +160,7 @@ func NewBladectlConfig(bladeName, apiPort string, caPEM []byte, clientCertDER []
 			{
 				Name: bladeName,
 				Blade: bladectlconfig.Blade{
-					Server:                   fmt.Sprintf("https://localhost:%s", apiPort),
+					Server:                   fmt.Sprintf("localhost:%s", apiPort),
 					CertificateAuthorityData: base64.StdEncoding.EncodeToString(caPEM),
 					Certificate: bladectlconfig.Certificate{
 						ClientCertificateData: base64.StdEncoding.EncodeToString(clientCertDER),
@@ -214,6 +171,62 @@ func NewBladectlConfig(bladeName, apiPort string, caPEM []byte, clientCertDER []
 		},
 		CurrentBlade: bladeName,
 	}
+}
+
+func generateCertificate(commonName string, isServer bool) (caPEM, certPEM, keyPEM []byte, herr humane.Error) {
+	caCert, caKey, herr := loadCA()
+	if herr != nil {
+		return nil, nil, nil, herr
+	}
+
+	clientKey, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+
+	var extKeyUsage []x509.ExtKeyUsage
+
+	if isServer {
+		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	} else {
+		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	}
+
+	clientTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject: pkix.Name{
+			CommonName: commonName,
+		},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage: extKeyUsage,
+		DNSNames:    []string{"localhost"},
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCert, &clientKey.PublicKey, caKey)
+	if err != nil {
+		return nil, nil, nil, humane.Wrap(err, "failed to create client certificate",
+			"this should never happen",
+			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+		)
+	}
+
+	clientKeyBytes, err := x509.MarshalECPrivateKey(clientKey)
+	if err != nil {
+		return nil, nil, nil, humane.Wrap(err, "failed to marshal client private key",
+			"this should never happen",
+			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+		)
+	}
+
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: clientKeyBytes})
+	caPEM, err = os.ReadFile(caPath) // public CA cert (not the key)
+	if err != nil {
+		return nil, nil, nil, humane.Wrap(err, "failed to read CA certificate",
+			"ensure the directory you are trying to create exists and is writable by the agent user",
+		)
+	}
+
+	return caPEM, certPEM, keyPEM, nil
 }
 
 // ensureCA ensures that the CA certificate and key exist, creating a new one if not found, and returns any error encountered.

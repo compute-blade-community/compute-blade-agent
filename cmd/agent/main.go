@@ -109,6 +109,7 @@ func main() {
 		agent.WithComputeBladeAgent(computebladeAgent),
 		agent.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
 		agent.WithListenAddr(cbAgentConfig.Listen.Grpc),
+		agent.WithListenMode(cbAgentConfig.Listen.GrpcListenMode),
 	)
 
 	// Run gRPC API

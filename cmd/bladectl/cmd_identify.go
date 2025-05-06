@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"
 	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
@@ -40,7 +42,12 @@ func runIdentity(cmd *cobra.Command, _ []string) error {
 	// Emit the event to the compute-blade-agent
 	_, err = client.EmitEvent(ctx, &bladeapiv1alpha1.EmitEventRequest{Event: event})
 	if err != nil {
-		return humane.Wrap(err, "failed to emit event", "ensure the compute-blade agent is running and responsive to requests", "check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'")
+		return fmt.Errorf(humane.Wrap(err,
+			"failed to emit event",
+			"ensure the compute-blade agent is running and responsive to requests",
+			"check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'",
+		).Display(),
+		)
 	}
 
 	// Check if we should wait for the identify state to be confirmed

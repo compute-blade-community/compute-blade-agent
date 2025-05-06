@@ -2,16 +2,23 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/uptime-induestries/compute-blade-agent/pkg/bladectlconfig"
 	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -20,6 +27,22 @@ var rootCmd = &cobra.Command{
 	Short: "bladectl interacts with the compute-blade-agent and allows you to manage hardware-features of your compute blade(s)",
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		origCtx := cmd.Context()
+
+		// Load potential file configs
+		if err := viper.ReadInConfig(); err != nil {
+			return err
+		}
+
+		// load configuration
+		var bladectlCfg bladectlconfig.BladectlConfig
+		if err := viper.Unmarshal(&bladectlCfg); err != nil {
+			return err
+		}
+
+		blade, herr := bladectlconfig.FindCurrentBlade(bladectlCfg)
+		if herr != nil {
+			return fmt.Errorf(herr.Display())
+		}
 
 		// setup signal handlers for SIGINT and SIGTERM
 		ctx, cancelCtx := context.WithTimeout(origCtx, timeout)
@@ -49,11 +72,56 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		conn, err := grpc.Dial(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return humane.Wrap(err, "failed to dial grpc server", "ensure the gRPC server you are trying to connect to is running and the address is correct")
+		var creds credentials.TransportCredentials
+		if blade.Certificate.ClientCertificateData == "" {
+			creds = insecure.NewCredentials()
+		} else {
+			// Decode base64 certificate, key, and CA
+			certPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientCertificateData)
+			if err != nil {
+				return fmt.Errorf("invalid base64 client cert: %w", err)
+			}
+
+			keyPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientKeyData)
+			if err != nil {
+				return fmt.Errorf("invalid base64 client key: %w", err)
+			}
+
+			caPEM, err := base64.StdEncoding.DecodeString(blade.CertificateAuthorityData)
+			if err != nil {
+				return fmt.Errorf("invalid base64 CA cert: %w", err)
+			}
+
+			// Load client cert/key pair
+			tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+			if err != nil {
+				return fmt.Errorf("failed to parse client cert/key pair: %w", err)
+			}
+
+			// Load CA into CertPool
+			caPool := x509.NewCertPool()
+			if !caPool.AppendCertsFromPEM(caPEM) {
+				return fmt.Errorf("failed to append CA certificate")
+			}
+
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{tlsCert},
+				RootCAs:      caPool,
+			}
+
+			creds = credentials.NewTLS(tlsConfig)
 		}
-		
+
+		conn, err := grpc.Dial(blade.Server, grpc.WithTransportCredentials(creds))
+		if err != nil {
+			return fmt.Errorf(
+				humane.Wrap(err,
+					"failed to dial grpc server",
+					"ensure the gRPC server you are trying to connect to is running and the address is correct",
+				).Display(),
+			)
+		}
+
 		client := bladeapiv1alpha1.NewBladeAgentServiceClient(conn)
 		cmd.SetContext(clientIntoContext(ctx, client))
 		return nil
