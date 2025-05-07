@@ -21,4 +21,11 @@ var (
 		Short: "Configure compute-blade",
 		Long:  "These commands allow you make changes to compute-blade related information.",
 	}
+
+	cmdRemove = &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm", "delete", "del", "unset"},
+		Short:   "Configure compute-blade",
+		Long:    "These commands allow you make changes to compute-blade related information.",
+	}
 )
