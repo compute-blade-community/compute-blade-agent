@@ -6,8 +6,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 )
 
 func ExampleNewSmartFanUnit() {
@@ -30,7 +30,7 @@ func ExampleNewSmartFanUnit() {
 		panic(err)
 	}
 
-	// Set fanspeed to 20%
+	// Set fan speed to 20%
 	err = client.SetFanSpeedPercent(ctx, 20)
 	if err != nil {
 		panic(err)

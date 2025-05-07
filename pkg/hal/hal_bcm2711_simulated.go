@@ -6,14 +6,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 	"go.uber.org/zap"
 )
 
 // fails if SimulatedHal does not implement ComputeBladeHal
 var _ ComputeBladeHal = &SimulatedHal{}
 
-// ComputeBladeMock implements a mock for the ComputeBladeHal interface
+// SimulatedHal implements a mock for the ComputeBladeHal interface
 type SimulatedHal struct {
 	logger *zap.Logger
 }

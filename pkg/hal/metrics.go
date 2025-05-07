@@ -1,4 +1,5 @@
 //go:build !tinygo
+
 package hal
 
 import (
@@ -10,7 +11,7 @@ var (
 	fanTargetPercent = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "computeblade",
 		Name:      "fan_target_percent",
-		Help:      "Target fanspeed in percent",
+		Help:      "Target fan speed in percent",
 	})
 	fanSpeed = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "computeblade",
@@ -29,7 +30,7 @@ var (
 	})
 	computeModule = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "computeblade",
-		Name:      "compute_modul_present",
+		Name:      "compute_module_present",
 		Help:      "Compute module type",
 	}, []string{"type"})
 	ledColorChangeEventCount = promauto.NewCounter(prometheus.CounterOpts{

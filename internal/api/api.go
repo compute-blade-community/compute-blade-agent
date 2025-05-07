@@ -1,4 +1,4 @@
-package agent
+package api
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 
 	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/sierrasoftworks/humane-errors-go"
-	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/certs"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
+	agent2 "github.com/uptime-industries/compute-blade-agent/pkg/agent"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,16 +20,41 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+type ListenMode string
+
+const (
+	ModeTcp  ListenMode = "tcp"
+	ModeUnix ListenMode = "unix"
+)
+
+func ListenModeFromString(s string) (ListenMode, humane.Error) {
+	switch s {
+	case string(ModeTcp):
+		return ModeTcp, nil
+	case string(ModeUnix):
+		return ModeUnix, nil
+	default:
+		return "", humane.New("invalid listen mode",
+			"ensure you are passing a valid listen mode to the grpc server",
+			"valid modes are: [tcp, unix]",
+		)
+	}
+}
+
+func (l ListenMode) String() string {
+	return string(l)
+}
+
 // AgentGrpcService represents a gRPC server implementation for managing compute blade agents.
 // It embeds UnimplementedBladeAgentServiceServer for forward compatibility and integrates ComputeBladeAgent logic.
 // The type allows for serving gRPC requests and gracefully shutting down the server.
 type AgentGrpcService struct {
 	bladeapiv1alpha1.UnimplementedBladeAgentServiceServer
-	agent         ComputeBladeAgent
+	agent         agent2.ComputeBladeAgent
 	server        *grpc.Server
 	authenticated bool
 	listenAddr    string
-	listenMode    string
+	listenMode    ListenMode
 }
 
 // NewGrpcApiServer creates a new gRPC service
@@ -40,9 +66,11 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 	}
 
 	grpcOpts := make([]grpc.ServerOption, 0)
-	if service.authenticated {
+
+	// If we run our gRPC Server TLS with authentication enabled
+	if service.listenMode == ModeTcp && service.authenticated {
 		// Load server's certificate and private key
-		cert, certPool, err := certs.GenerateServerCert(ctx, service.listenAddr)
+		cert, certPool, err := EnsureServerCertificate(ctx)
 		if err != nil {
 			log.FromContext(ctx).Fatal("failed to load server key pair",
 				zap.Error(err),
@@ -58,7 +86,24 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 			InsecureSkipVerify: true, // FIXME
 		}
 
+		// Append the mTLS credentials to our gRPC Options to enable authenticated clients
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+
+		// Make sure we have a local bladectl config with authentication enabled
+		if err := EnsureAuthenticatedBladectlConfig(ctx, service.listenAddr, service.listenMode); err != nil {
+			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
+				zap.Error(err),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
+	} else {
+		// Make sure we have a local bladectl config with no authentication enabled
+		if err := EnsureUnauthenticatedBladectlConfig(ctx, service.listenAddr, service.listenMode); err != nil {
+			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
+				zap.Error(err),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
 	}
 
 	// Add Logging Middleware
@@ -72,6 +117,7 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 	return service
 }
 
+// ServeAsync starts the gRPC server asynchronously in a new goroutine and cancels the context if an error occurs.
 func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.CancelCauseFunc) {
 	go func() {
 		err := s.Serve(ctx)
@@ -87,6 +133,7 @@ func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.Cancel
 	}()
 }
 
+// Serve starts the gRPC server using the configured listen address and mode, returning an error if it fails.
 func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
 	if len(s.listenAddr) == 0 {
 		return humane.New("no listen address provided",
@@ -94,7 +141,7 @@ func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
 		)
 	}
 
-	grpcListen, err := net.Listen(s.listenMode, s.listenAddr)
+	grpcListen, err := net.Listen(s.listenMode.String(), s.listenAddr)
 	if err != nil {
 		return humane.Wrap(err, "failed to create grpc listener",
 			"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
@@ -111,29 +158,28 @@ func (s *AgentGrpcService) Serve(ctx context.Context) humane.Error {
 	return nil
 }
 
+// GracefulStop gracefully stops the gRPC server, ensuring all in-progress RPCs are completed before shutting down.
 func (s *AgentGrpcService) GracefulStop() {
 	s.server.GracefulStop()
 }
 
 // EmitEvent emits an event to the agent runtime
-func (s *AgentGrpcService) EmitEvent(
-	ctx context.Context,
-	req *bladeapiv1alpha1.EmitEventRequest,
-) (*emptypb.Empty, error) {
+func (s *AgentGrpcService) EmitEvent(ctx context.Context, req *bladeapiv1alpha1.EmitEventRequest) (*emptypb.Empty, error) {
 	switch req.GetEvent() {
 	case bladeapiv1alpha1.Event_IDENTIFY:
-		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, IdentifyEvent)
+		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, events.IdentifyEvent)
 	case bladeapiv1alpha1.Event_IDENTIFY_CONFIRM:
-		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, IdentifyConfirmEvent)
+		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, events.IdentifyConfirmEvent)
 	case bladeapiv1alpha1.Event_CRITICAL:
-		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, CriticalEvent)
+		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, events.CriticalEvent)
 	case bladeapiv1alpha1.Event_CRITICAL_RESET:
-		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, CriticalResetEvent)
+		return &emptypb.Empty{}, s.agent.EmitEvent(ctx, events.CriticalResetEvent)
 	default:
 		return &emptypb.Empty{}, status.Errorf(codes.InvalidArgument, "invalid event type")
 	}
 }
 
+// WaitForIdentifyConfirm blocks until the identify confirmation process is completed or an error occurs.
 func (s *AgentGrpcService) WaitForIdentifyConfirm(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, s.agent.WaitForIdentifyConfirm(ctx)
 }
@@ -159,7 +205,7 @@ func (s *AgentGrpcService) GetStatus(context.Context, *emptypb.Empty) (*bladeapi
 // GenerateClientCertificate creates a client certificate for secure communication with the blade agent.
 // It returns a StatusResponse containing the updated agent status or an error if the operation fails.
 func (s *AgentGrpcService) GenerateClientCertificate(_ context.Context, req *bladeapiv1alpha1.ClientCertRequest) (*bladeapiv1alpha1.ClientCertResponse, error) {
-	caPEM, certPEM, keyPEM, err := certs.GenerateClientCert(req.CommonName)
+	caPEM, certPEM, keyPEM, err := GenerateClientCert(req.CommonName)
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to generate client certificate: %s", err.Error())
 	}

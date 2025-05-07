@@ -1,9 +1,10 @@
-package config
+package agent
 
 import (
-	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/internal/api"
+	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 )
 
 type LogConfiguration struct {
@@ -15,7 +16,7 @@ type ComputeBladeAgentConfig struct {
 	Log LogConfiguration `mapstructure:"log"`
 
 	// Listen is the listen configuration for the server
-	Listen ApiConfig `mapstructure:"listen"`
+	Listen api.Config `mapstructure:"listen"`
 
 	// Hal is the hardware abstraction layer configuration
 	Hal hal.Config `mapstructure:"hal"`
@@ -27,7 +28,7 @@ type ComputeBladeAgentConfig struct {
 	IdentifyLedColor led.Color `mapstructure:"identify_led_color"`
 
 	// CriticalLedColor is the color of the top(!) LED when the blade is in critical mode.
-	// In the circumstance when >1 blades are in critical mode, the identidy function can be used to find the right blade
+	// In the circumstance when >1 blades are in critical mode, the identify function can be used to find the right blade
 	CriticalLedColor led.Color `mapstructure:"critical_led_color"`
 
 	// StealthModeEnabled indicates whether stealth mode is enabled
@@ -40,14 +41,7 @@ type ComputeBladeAgentConfig struct {
 	FanSpeed *fancontroller.FanOverrideOpts `mapstructure:"fan_speed"`
 
 	// FanControllerConfig is the configuration of the fan controller
-	FanControllerConfig fancontroller.FanControllerConfig `mapstructure:"fan_controller"`
+	FanControllerConfig fancontroller.Config `mapstructure:"fan_controller"`
 
 	ComputeBladeHalOpts hal.ComputeBladeHalOpts `mapstructure:"hal"`
-}
-
-type ApiConfig struct {
-	Metrics           string `mapstructure:"metrics"`
-	Grpc              string `mapstructure:"grpc"`
-	GrpcAuthenticated bool   `mapstructure:"authenticated"`
-	GrpcListenMode    string `mapstructure:"mode"`
 }

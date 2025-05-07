@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/ledengine"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/util"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/ledengine"
+	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 )
 
 func TestNewStaticPattern(t *testing.T) {
@@ -113,33 +113,34 @@ func TestNewBurstPattern(t *testing.T) {
 	}
 }
 
-func TestNewSlowBlinkPattern(t *testing.T) {
-	type args struct {
-		baseColor   led.Color
-		activeColor led.Color
-	}
-	tests := []struct {
-		name string
-		args args
-		want ledengine.BlinkPattern
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ledengine.NewSlowBlinkPattern(tt.args.baseColor, tt.args.activeColor); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("NewSlowledengine.BlinkPattern() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+// FIXME: No dead code
+//func TestNewSlowBlinkPattern(t *testing.T) {
+//	type args struct {
+//		baseColor   led.Color
+//		activeColor led.Color
+//	}
+//	tests := []struct {
+//		name string
+//		args args
+//		want ledengine.BlinkPattern
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			if got := ledengine.NewSlowBlinkPattern(tt.args.baseColor, tt.args.activeColor); !reflect.DeepEqual(
+//				got,
+//				tt.want,
+//			) {
+//				t.Errorf("NewSlowLedEngine.BlinkPattern() = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+//}
 
 func TestNewLedEngine(t *testing.T) {
 	t.Parallel()
-	engine := ledengine.LedEngineOpts{
+	engine := ledengine.Options{
 		Clock:  util.RealClock{},
 		LedIdx: 0,
 		Hal:    &hal.ComputeBladeHalMock{},
@@ -158,7 +159,7 @@ func Test_LedEngine_SetPattern_WhileRunning(t *testing.T) {
 	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
 	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
 
-	opts := ledengine.LedEngineOpts{
+	opts := ledengine.Options{
 		Hal:    &cbMock,
 		Clock:  &clk,
 		LedIdx: 0,
@@ -204,7 +205,7 @@ func Test_LedEngine_SetPattern_BeforeRun(t *testing.T) {
 	cbMock := hal.ComputeBladeHalMock{}
 	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
 
-	opts := ledengine.LedEngineOpts{
+	opts := ledengine.Options{
 		Hal:    &cbMock,
 		Clock:  &clk,
 		LedIdx: 0,
@@ -247,7 +248,7 @@ func Test_LedEngine_SetPattern_SetLedFailureInPattern(t *testing.T) {
 	call0 := cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
 	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(errors.New("failure")).NotBefore(call0)
 
-	opts := ledengine.LedEngineOpts{
+	opts := ledengine.Options{
 		Hal:    &cbMock,
 		Clock:  &clk,
 		LedIdx: 0,

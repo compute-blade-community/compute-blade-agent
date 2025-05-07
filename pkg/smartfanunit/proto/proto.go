@@ -78,7 +78,7 @@ func WritePacket(_ context.Context, w io.Writer, packet Packet) error {
 // ReadPacket reads a packet from an io.Reader with escaping.
 // This is blocking and drops invalid bytes until a valid packet is received.
 func ReadPacket(ctx context.Context, r io.Reader) (Packet, error) {
-	buffer := []uint8{}
+	var buffer []uint8
 
 	started := false
 	escaped := false

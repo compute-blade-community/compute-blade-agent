@@ -9,14 +9,15 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/bladectlconfig"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/uptime-industries/compute-blade-agent/pkg/bladectlconfig"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -74,54 +75,27 @@ var rootCmd = &cobra.Command{
 		}()
 
 		// Create our gRPC Transport Credentials
-		creds := insecure.NewCredentials()
+		credentials := insecure.NewCredentials()
 		certData := blade.Certificate
 
 		// If we're presented with certificate data in the config, we try to create a mTLS connection
-		if certData.ClientCertificateData != "" && certData.ClientKeyData != "" && certData.CertificateAuthorityData != "" {
-			// Decode base64 certificate, key, and CA
-			certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
-			if err != nil {
-				return fmt.Errorf("invalid base64 client cert: %w", err)
+		if len(certData.ClientCertificateData) > 0 && len(certData.ClientKeyData) > 0 && len(certData.CertificateAuthorityData) > 0 {
+			var err error
+
+			serverName := blade.Server
+			if strings.Contains(serverName, ":") {
+				serverName, _, err = net.SplitHostPort(blade.Server)
+				if err != nil {
+					return fmt.Errorf("failed to parse server address: %w", err)
+				}
 			}
 
-			keyPEM, err := base64.StdEncoding.DecodeString(certData.ClientKeyData)
-			if err != nil {
-				return fmt.Errorf("invalid base64 client key: %w", err)
+			if credentials, err = loadTlsCredentials(serverName, certData); err != nil {
+				return err
 			}
-
-			caPEM, err := base64.StdEncoding.DecodeString(certData.CertificateAuthorityData)
-			if err != nil {
-				return fmt.Errorf("invalid base64 CA cert: %w", err)
-			}
-
-			// Load client cert/key pair
-			tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
-			if err != nil {
-				return fmt.Errorf("failed to parse client cert/key pair: %w", err)
-			}
-
-			// Load CA into CertPool
-			caPool := x509.NewCertPool()
-			if !caPool.AppendCertsFromPEM(caPEM) {
-				return fmt.Errorf("failed to append CA certificate")
-			}
-
-			serverName, _, err := net.SplitHostPort(blade.Server)
-			if err != nil {
-				return fmt.Errorf("failed to parse server address: %w", err)
-			}
-
-			tlsConfig := &tls.Config{
-				Certificates: []tls.Certificate{tlsCert},
-				RootCAs:      caPool,
-				ServerName:   serverName,
-			}
-
-			creds = credentials.NewTLS(tlsConfig)
 		}
 
-		conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(creds))
+		conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(credentials))
 		if err != nil {
 			return fmt.Errorf(
 				humane.Wrap(err,
@@ -135,4 +109,42 @@ var rootCmd = &cobra.Command{
 		cmd.SetContext(clientIntoContext(ctx, client))
 		return nil
 	},
+}
+
+func loadTlsCredentials(server string, certData bladectlconfig.Certificate) (credentials.TransportCredentials, error) {
+	// Decode base64 certificate, key, and CA
+	certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64 client cert: %w", err)
+	}
+
+	keyPEM, err := base64.StdEncoding.DecodeString(certData.ClientKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64 client key: %w", err)
+	}
+
+	caPEM, err := base64.StdEncoding.DecodeString(certData.CertificateAuthorityData)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64 CA cert: %w", err)
+	}
+
+	// Load client cert/key pair
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse client cert/key pair: %w", err)
+	}
+
+	// Load CA into CertPool
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM(caPEM) {
+		return nil, fmt.Errorf("failed to append CA certificate")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		RootCAs:      caPool,
+		ServerName:   server,
+	}
+
+	return credentials.NewTLS(tlsConfig), nil
 }

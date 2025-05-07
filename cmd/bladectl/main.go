@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	bladeapiv1alpha1 "github.com/uptime-induestries/compute-blade-agent/api/bladeapi/v1alpha1"
+	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
 )
 
 type grpcClientContextKey int
 
 const (
-	defaultGrpcClientContextKey     grpcClientContextKey = 0
-	defaultGrpcClientConnContextKey grpcClientContextKey = 1
+	defaultGrpcClientContextKey grpcClientContextKey = 0
 )
 
 var (

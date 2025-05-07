@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-induestries/compute-blade-agent/internal/agent"
+	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 )
 
 func TestNewComputeBladeState(t *testing.T) {
@@ -23,9 +24,9 @@ func TestComputeBladeState_RegisterEventIdentify(t *testing.T) {
 	state := agent.NewComputeBladeState()
 
 	// Identify event
-	state.RegisterEvent(agent.IdentifyEvent)
+	state.RegisterEvent(events.IdentifyEvent)
 	assert.True(t, state.IdentifyActive())
-	state.RegisterEvent(agent.IdentifyConfirmEvent)
+	state.RegisterEvent(events.IdentifyConfirmEvent)
 	assert.False(t, state.IdentifyActive())
 }
 
@@ -35,9 +36,9 @@ func TestComputeBladeState_RegisterEventCritical(t *testing.T) {
 	state := agent.NewComputeBladeState()
 
 	// critical event
-	state.RegisterEvent(agent.CriticalEvent)
+	state.RegisterEvent(events.CriticalEvent)
 	assert.True(t, state.CriticalActive())
-	state.RegisterEvent(agent.CriticalResetEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
 	assert.False(t, state.CriticalActive())
 }
 
@@ -47,15 +48,15 @@ func TestComputeBladeState_RegisterEventMixed(t *testing.T) {
 	state := agent.NewComputeBladeState()
 
 	// Send a bunch of events
-	state.RegisterEvent(agent.CriticalEvent)
-	state.RegisterEvent(agent.CriticalResetEvent)
-	state.RegisterEvent(agent.NoopEvent)
-	state.RegisterEvent(agent.CriticalEvent)
-	state.RegisterEvent(agent.NoopEvent)
-	state.RegisterEvent(agent.IdentifyEvent)
-	state.RegisterEvent(agent.IdentifyEvent)
-	state.RegisterEvent(agent.CriticalResetEvent)
-	state.RegisterEvent(agent.IdentifyEvent)
+	state.RegisterEvent(events.CriticalEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
+	state.RegisterEvent(events.NoopEvent)
+	state.RegisterEvent(events.CriticalEvent)
+	state.RegisterEvent(events.NoopEvent)
+	state.RegisterEvent(events.IdentifyEvent)
+	state.RegisterEvent(events.IdentifyEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
+	state.RegisterEvent(events.IdentifyEvent)
 
 	assert.False(t, state.CriticalActive())
 	assert.True(t, state.IdentifyActive())
@@ -68,7 +69,7 @@ func TestComputeBladeState_WaitForIdentifyConfirm_NoTimeout(t *testing.T) {
 
 	// send identify event
 	t.Log("Setting identify event")
-	state.RegisterEvent(agent.IdentifyEvent)
+	state.RegisterEvent(events.IdentifyEvent)
 	assert.True(t, state.IdentifyActive())
 
 	var wg sync.WaitGroup
@@ -87,7 +88,7 @@ func TestComputeBladeState_WaitForIdentifyConfirm_NoTimeout(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// confirm event
-	state.RegisterEvent(agent.IdentifyConfirmEvent)
+	state.RegisterEvent(events.IdentifyConfirmEvent)
 	t.Log("Identify event confirmed")
 
 	wg.Wait()
@@ -100,7 +101,7 @@ func TestComputeBladeState_WaitForIdentifyConfirm_Timeout(t *testing.T) {
 
 	// send identify event
 	t.Log("Setting identify event")
-	state.RegisterEvent(agent.IdentifyEvent)
+	state.RegisterEvent(events.IdentifyEvent)
 	assert.True(t, state.IdentifyActive())
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
@@ -120,7 +121,7 @@ func TestComputeBladeState_WaitForIdentifyConfirm_Timeout(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// confirm event
-	state.RegisterEvent(agent.IdentifyConfirmEvent)
+	state.RegisterEvent(events.IdentifyConfirmEvent)
 	t.Log("Identify event confirmed")
 
 	wg.Wait()
@@ -133,7 +134,7 @@ func TestComputeBladeState_WaitForCriticalClear_NoTimeout(t *testing.T) {
 
 	// send critical event
 	t.Log("Setting critical event")
-	state.RegisterEvent(agent.CriticalEvent)
+	state.RegisterEvent(events.CriticalEvent)
 	assert.True(t, state.CriticalActive())
 
 	var wg sync.WaitGroup
@@ -152,7 +153,7 @@ func TestComputeBladeState_WaitForCriticalClear_NoTimeout(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// confirm event
-	state.RegisterEvent(agent.CriticalResetEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
 	t.Log("critical event confirmed")
 
 	wg.Wait()
@@ -165,7 +166,7 @@ func TestComputeBladeState_WaitForCriticalClear_Timeout(t *testing.T) {
 
 	// send critical event
 	t.Log("Setting critical event")
-	state.RegisterEvent(agent.CriticalEvent)
+	state.RegisterEvent(events.CriticalEvent)
 	assert.True(t, state.CriticalActive())
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
@@ -185,7 +186,7 @@ func TestComputeBladeState_WaitForCriticalClear_Timeout(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// confirm event
-	state.RegisterEvent(agent.CriticalResetEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
 	t.Log("critical event confirmed")
 
 	wg.Wait()

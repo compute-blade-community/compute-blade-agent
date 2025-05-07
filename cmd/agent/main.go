@@ -14,10 +14,11 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/uptime-induestries/compute-blade-agent/internal/agent"
-	"github.com/uptime-induestries/compute-blade-agent/internal/config"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	"github.com/uptime-industries/compute-blade-agent/internal/agent"
+	"github.com/uptime-industries/compute-blade-agent/internal/api"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +28,11 @@ var (
 	Date    string
 )
 
+var debug = pflag.BoolP("debug", "d", false, "enable debug logging")
+
 func main() {
+	pflag.Parse()
+
 	// Setup configuration
 	viper.SetEnvPrefix("BLADE")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -43,13 +48,11 @@ func main() {
 
 	// setup logger
 	var baseLogger *zap.Logger
-	switch logMode := viper.GetString("log.mode"); logMode {
-	case "development":
+
+	if debug != nil && *debug {
 		baseLogger = zap.Must(zap.NewDevelopment())
-	case "production":
+	} else {
 		baseLogger = zap.Must(zap.NewProduction())
-	default:
-		panic(fmt.Errorf("invalid log.mode: %s", logMode))
 	}
 
 	zapLogger := baseLogger.With(zap.String("app", "compute-blade-agent"))
@@ -63,7 +66,7 @@ func main() {
 	defer cancelCtx(context.Canceled)
 
 	// load configuration
-	var cbAgentConfig config.ComputeBladeAgentConfig
+	var cbAgentConfig agent.ComputeBladeAgentConfig
 	if err := viper.Unmarshal(&cbAgentConfig); err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).Fatal("Failed to load configuration", zap.Error(err))
@@ -105,11 +108,11 @@ func main() {
 	computebladeAgent.RunAsync(ctx, cancelCtx)
 
 	// Setup GRPC server
-	grpcServer := agent.NewGrpcApiServer(ctx,
-		agent.WithComputeBladeAgent(computebladeAgent),
-		agent.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
-		agent.WithListenAddr(cbAgentConfig.Listen.Grpc),
-		agent.WithListenMode(cbAgentConfig.Listen.GrpcListenMode),
+	grpcServer := api.NewGrpcApiServer(ctx,
+		api.WithComputeBladeAgent(computebladeAgent),
+		api.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
+		api.WithListenAddr(cbAgentConfig.Listen.Grpc),
+		api.WithListenMode(cbAgentConfig.Listen.GrpcListenMode),
 	)
 
 	// Run gRPC API
@@ -154,7 +157,7 @@ func main() {
 	}
 }
 
-func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *config.ApiConfig) *http.Server {
+func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *api.Config) *http.Server {
 	instrumentationHandler := http.NewServeMux()
 	instrumentationHandler.Handle("/metrics", promhttp.Handler())
 	instrumentationHandler.HandleFunc("/debug/pprof/", pprof.Index)

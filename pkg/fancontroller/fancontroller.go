@@ -13,32 +13,15 @@ type FanController interface {
 	GetFanSpeed(temperature float64) uint8
 }
 
-type FanOverrideOpts struct {
-	Percent uint8 `mapstructure:"speed"`
-}
-
-type FanControllerStep struct {
-	// Temperature is the temperature to react to
-	Temperature float64 `mapstructure:"temperature"`
-	// Percent is the fan speed in percent
-	Percent uint8 `mapstructure:"percent"`
-}
-
-// FanController configures a fan controller for the computeblade
-type FanControllerConfig struct {
-	// Steps defines the temperature/speed steps for the fan controller
-	Steps []FanControllerStep `mapstructure:"steps"`
-}
-
 // FanController is a simple fan controller that reacts to temperature changes with a linear function
 type fanControllerLinear struct {
 	mu           sync.Mutex
 	overrideOpts *FanOverrideOpts
-	config       FanControllerConfig
+	config       Config
 }
 
 // NewLinearFanController creates a new FanControllerLinear
-func NewLinearFanController(config FanControllerConfig) (FanController, humane.Error) {
+func NewLinearFanController(config Config) (FanController, humane.Error) {
 	steps := config.Steps
 
 	// Sort steps by temperature

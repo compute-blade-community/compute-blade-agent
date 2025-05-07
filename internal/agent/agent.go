@@ -8,12 +8,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/uptime-induestries/compute-blade-agent/internal/config"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/ledengine"
-	"github.com/uptime-induestries/compute-blade-agent/pkg/log"
+	agent2 "github.com/uptime-industries/compute-blade-agent/pkg/agent"
+	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
+	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/uptime-industries/compute-blade-agent/pkg/ledengine"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
 
@@ -33,36 +34,18 @@ var (
 	}, []string{"type"})
 )
 
-// ComputeBladeAgent implements the core-logic of the agent. It is responsible for handling events and interfacing with the hardware.
-type ComputeBladeAgent interface {
-	// RunAsync dispatches the agent until the context is canceled or an error occurs
-	RunAsync(ctx context.Context, cancel context.CancelCauseFunc)
-	// Run dispatches the agent and blocks until the context is canceled or an error occurs
-	Run(ctx context.Context) error
-	// EmitEvent emits an event to the agent
-	EmitEvent(ctx context.Context, event Event) error
-	// SetFanSpeed sets the fan speed in percent
-	SetFanSpeed(_ context.Context, speed uint8) error
-	// SetStealthMode sets the stealth mode
-	SetStealthMode(_ context.Context, enabled bool) error
-	// WaitForIdentifyConfirm blocks until the user confirms the identify mode
-	WaitForIdentifyConfirm(ctx context.Context) error
-}
-
 // computeBladeAgentImpl is the implementation of the ComputeBladeAgent interface
 type computeBladeAgentImpl struct {
-	opts          config.ComputeBladeAgentConfig
+	opts          ComputeBladeAgentConfig
 	blade         hal.ComputeBladeHal
-	state         ComputebladeState
+	state         agent2.ComputebladeState
 	edgeLedEngine ledengine.LedEngine
 	topLedEngine  ledengine.LedEngine
-
 	fanController fancontroller.FanController
-
-	eventChan chan Event
+	eventChan     chan events.Event
 }
 
-func NewComputeBladeAgent(ctx context.Context, opts config.ComputeBladeAgentConfig) (ComputeBladeAgent, error) {
+func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (agent2.ComputeBladeAgent, error) {
 	var err error
 
 	// blade, err := hal.NewCm4Hal(hal.ComputeBladeHalOpts{
@@ -71,12 +54,12 @@ func NewComputeBladeAgent(ctx context.Context, opts config.ComputeBladeAgentConf
 		return nil, err
 	}
 
-	edgeLedEngine := ledengine.NewLedEngine(ledengine.LedEngineOpts{
+	edgeLedEngine := ledengine.NewLedEngine(ledengine.Options{
 		LedIdx: hal.LedEdge,
 		Hal:    blade,
 	})
 
-	topLedEngine := ledengine.NewLedEngine(ledengine.LedEngineOpts{
+	topLedEngine := ledengine.NewLedEngine(ledengine.Options{
 		LedIdx: hal.LedTop,
 		Hal:    blade,
 	})
@@ -92,9 +75,9 @@ func NewComputeBladeAgent(ctx context.Context, opts config.ComputeBladeAgentConf
 		edgeLedEngine: edgeLedEngine,
 		topLedEngine:  topLedEngine,
 		fanController: fanController,
-		state:         NewComputeBladeState(),
+		state:         agent2.NewComputeBladeState(),
 		eventChan: make(
-			chan Event,
+			chan events.Event,
 			10,
 		), // backlog of 10 events. They should process fast but we e.g. don't want to miss button presses
 	}, nil
@@ -119,7 +102,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	log.FromContext(ctx).Info("Starting ComputeBlade agent")
 
 	// Ingest noop event to initialise metrics
-	a.state.RegisterEvent(NoopEvent)
+	a.state.RegisterEvent(events.NoopEvent)
 
 	// Set defaults
 	if err := a.blade.SetStealthMode(a.opts.StealthModeEnabled); err != nil {
@@ -151,10 +134,10 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 				return
 			}
 			select {
-			case a.eventChan <- Event(EdgeButtonEvent):
+			case a.eventChan <- events.Event(events.EdgeButtonEvent):
 			default:
 				log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
-				droppedEventCounter.WithLabelValues(Event(EdgeButtonEvent).String()).Inc()
+				droppedEventCounter.WithLabelValues(events.Event(events.EdgeButtonEvent).String()).Inc()
 			}
 		}
 	}()
@@ -235,7 +218,44 @@ func (a *computeBladeAgentImpl) cleanup(ctx context.Context) {
 	}
 }
 
-func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event Event) error {
+// EmitEvent dispatches an event to the event handler
+func (a *computeBladeAgentImpl) EmitEvent(ctx context.Context, event events.Event) error {
+	select {
+	case a.eventChan <- event:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// SetFanSpeed sets the fan speed
+func (a *computeBladeAgentImpl) SetFanSpeed(_ context.Context, speed uint8) error {
+	if a.state.CriticalActive() {
+		return errors.New("cannot set fan speed while the blade is in a critical state")
+	}
+	a.fanController.Override(&fancontroller.FanOverrideOpts{Percent: speed})
+	return nil
+}
+
+// SetStealthMode enables/disables the stealth mode
+func (a *computeBladeAgentImpl) SetStealthMode(_ context.Context, enabled bool) error {
+	if a.state.CriticalActive() {
+		return errors.New("cannot set stealth mode while the blade is in a critical state")
+	}
+	return a.blade.SetStealthMode(enabled)
+}
+
+// WaitForIdentifyConfirm waits for the identify confirm event
+func (a *computeBladeAgentImpl) WaitForIdentifyConfirm(ctx context.Context) error {
+	return a.state.WaitForIdentifyConfirm(ctx)
+}
+
+// Close shuts down the underlying blade instance and releases any associated resources, returning a combined error if any.
+func (a *computeBladeAgentImpl) Close() error {
+	return errors.Join(a.blade.Close())
+}
+
+func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event events.Event) error {
 	log.FromContext(ctx).Info("Handling event", zap.String("event", event.String()))
 	eventCounter.WithLabelValues(event.String()).Inc()
 
@@ -244,23 +264,23 @@ func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event Event) er
 
 	// Dispatch incoming events to the right handler(s)
 	switch event {
-	case CriticalEvent:
+	case events.CriticalEvent:
 		// Handle critical event
 		return a.handleCriticalActive(ctx)
-	case CriticalResetEvent:
+	case events.CriticalResetEvent:
 		// Handle critical event
 		return a.handleCriticalReset(ctx)
-	case IdentifyEvent:
+	case events.IdentifyEvent:
 		// Handle identify event
 		return a.handleIdentifyActive(ctx)
-	case IdentifyConfirmEvent:
+	case events.IdentifyConfirmEvent:
 		// Handle identify event
 		return a.handleIdentifyConfirm(ctx)
-	case EdgeButtonEvent:
+	case events.EdgeButtonEvent:
 		// Handle edge button press to toggle identify mode
-		event := Event(IdentifyEvent)
+		event := events.Event(events.IdentifyEvent)
 		if a.state.IdentifyActive() {
-			event = Event(IdentifyConfirmEvent)
+			event = events.Event(events.IdentifyConfirmEvent)
 		}
 		select {
 		case a.eventChan <- event:
@@ -268,7 +288,7 @@ func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event Event) er
 			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
 			droppedEventCounter.WithLabelValues(event.String()).Inc()
 		}
-	case NoopEvent:
+	case events.NoopEvent:
 	}
 
 	return nil
@@ -319,10 +339,6 @@ func (a *computeBladeAgentImpl) handleCriticalReset(ctx context.Context) error {
 	return nil
 }
 
-func (a *computeBladeAgentImpl) Close() error {
-	return errors.Join(a.blade.Close())
-}
-
 // runTopLedEngine runs the top LED engine
 func (a *computeBladeAgentImpl) runTopLedEngine(ctx context.Context) error {
 	// FIXME the top LED is only used to indicate emergency situations
@@ -369,36 +385,4 @@ func (a *computeBladeAgentImpl) runFanController(ctx context.Context) error {
 			log.FromContext(ctx).Error("Failed to set fan speed", zap.Error(err))
 		}
 	}
-}
-
-// EmitEvent dispatches an event to the event handler
-func (a *computeBladeAgentImpl) EmitEvent(ctx context.Context, event Event) error {
-	select {
-	case a.eventChan <- event:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-// SetFanSpeed sets the fan speed
-func (a *computeBladeAgentImpl) SetFanSpeed(_ context.Context, speed uint8) error {
-	if a.state.CriticalActive() {
-		return errors.New("cannot set fan speed while the blade is in a critical state")
-	}
-	a.fanController.Override(&fancontroller.FanOverrideOpts{Percent: speed})
-	return nil
-}
-
-// SetStealthMode enables/disables the stealth mode
-func (a *computeBladeAgentImpl) SetStealthMode(_ context.Context, enabled bool) error {
-	if a.state.CriticalActive() {
-		return errors.New("cannot set stealth mode while the blade is in a critical state")
-	}
-	return a.blade.SetStealthMode(enabled)
-}
-
-// WaitForIdentifyConfirm waits for the identify confirm event
-func (a *computeBladeAgentImpl) WaitForIdentifyConfirm(ctx context.Context) error {
-	return a.state.WaitForIdentifyConfirm(ctx)
 }

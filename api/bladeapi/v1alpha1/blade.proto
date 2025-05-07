@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto4";
 
 import "google/protobuf/empty.proto";
 package api.bladeapi.v1alpha1;
@@ -46,23 +46,16 @@ message StatusResponse {
   PowerStatus power_status = 6;
 }
 
-message ClientCertRequest {
-  string common_name = 1;
-}
-
-message ClientCertResponse {
-  string ca_pem = 1;
-  string certificate_pem = 2;
-  string private_key_pem = 3;
-}
-
 service BladeAgentService {
   // EmitEvent emits an event to the blade
   rpc EmitEvent(EmitEventRequest) returns (google.protobuf.Empty) {}
+
   // WaitForIdentifyConfirm blocks until the blades button is pressed
   rpc WaitForIdentifyConfirm(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
   rpc SetFanSpeed(SetFanSpeedRequest) returns (google.protobuf.Empty) {}
+
   rpc SetStealthMode(StealthModeRequest) returns (google.protobuf.Empty) {}
+
   rpc GetStatus(google.protobuf.Empty) returns (StatusResponse) {}
-  rpc GenerateClientCertificate (ClientCertRequest) returns (ClientCertResponse);
 }

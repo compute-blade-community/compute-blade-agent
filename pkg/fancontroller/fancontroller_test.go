@@ -1,17 +1,16 @@
-// fancontroller_test.go
 package fancontroller_test
 
 import (
 	"testing"
 
-	"github.com/uptime-induestries/compute-blade-agent/pkg/fancontroller"
+	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
 )
 
 func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 	t.Parallel()
 
-	config := fancontroller.FanControllerConfig{
-		Steps: []fancontroller.FanControllerStep{
+	config := fancontroller.Config{
+		Steps: []fancontroller.Step{
 			{Temperature: 20, Percent: 30},
 			{Temperature: 30, Percent: 60},
 		},
@@ -47,8 +46,8 @@ func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 	t.Parallel()
 
-	config := fancontroller.FanControllerConfig{
-		Steps: []fancontroller.FanControllerStep{
+	config := fancontroller.Config{
+		Steps: []fancontroller.Step{
 			{Temperature: 20, Percent: 30},
 			{Temperature: 30, Percent: 60},
 		},
@@ -87,13 +86,13 @@ func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 	testCases := []struct {
 		name   string
-		config fancontroller.FanControllerConfig
+		config fancontroller.Config
 		errMsg string
 	}{
 		{
 			name: "Overlapping Step Temperatures",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
 					{Temperature: 20, Percent: 60},
 					{Temperature: 20, Percent: 30},
 				},
@@ -102,8 +101,8 @@ func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 		},
 		{
 			name: "Percentages must not decrease",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
 					{Temperature: 20, Percent: 60},
 					{Temperature: 30, Percent: 30},
 				},
@@ -112,8 +111,8 @@ func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 		},
 		{
 			name: "InvalidSpeedRange",
-			config: fancontroller.FanControllerConfig{
-				Steps: []fancontroller.FanControllerStep{
+			config: fancontroller.Config{
+				Steps: []fancontroller.Step{
 					{Temperature: 20, Percent: 10},
 					{Temperature: 30, Percent: 200},
 				},

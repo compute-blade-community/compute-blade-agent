@@ -6,7 +6,7 @@ The `compute-blade-agent` serves as an operating system agent interfacing with [
 
 **Quick Setup with TL;DR**:
 ```bash
-curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/github.com/uptime-induestries/compute-blade-agent/main/hack/autoinstall.sh
+curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/github.com/uptime-industries/compute-blade-agent/main/hack/autoinstall.sh
 chmod +x /tmp/compute-blade-agent-installer.sh
 /tmp/compute-blade-agent-installer.sh
 ```

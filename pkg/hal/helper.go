@@ -1,4 +1,5 @@
 //go:build linux
+
 package hal
 
 import (
@@ -8,11 +9,11 @@ import (
 	"unsafe"
 )
 
-func mmap(file *os.File, base int64, lenght int) ([]uint32, []uint8, error) {
+func mmap(file *os.File, base int64, length int) ([]uint32, []uint8, error) {
 	mem8, err := syscall.Mmap(
 		int(file.Fd()),
 		base,
-		lenght,
+		length,
 		syscall.PROT_READ|syscall.PROT_WRITE,
 		syscall.MAP_SHARED,
 	)

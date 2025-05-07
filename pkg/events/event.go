@@ -1,4 +1,4 @@
-package agent
+package events
 
 type Event int
 
