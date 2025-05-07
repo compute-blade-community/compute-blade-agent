@@ -201,18 +201,3 @@ func (s *AgentGrpcService) SetStealthMode(ctx context.Context, req *bladeapiv1al
 func (s *AgentGrpcService) GetStatus(context.Context, *emptypb.Empty) (*bladeapiv1alpha1.StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
 }
-
-// GenerateClientCertificate creates a client certificate for secure communication with the blade agent.
-// It returns a StatusResponse containing the updated agent status or an error if the operation fails.
-func (s *AgentGrpcService) GenerateClientCertificate(_ context.Context, req *bladeapiv1alpha1.ClientCertRequest) (*bladeapiv1alpha1.ClientCertResponse, error) {
-	caPEM, certPEM, keyPEM, err := GenerateClientCert(req.CommonName)
-	if err != nil {
-		return nil, status.Errorf(codes.Aborted, "failed to generate client certificate: %s", err.Error())
-	}
-
-	return &bladeapiv1alpha1.ClientCertResponse{
-		CaPem:          string(caPEM),
-		CertificatePem: string(certPEM),
-		PrivateKeyPem:  string(keyPEM),
-	}, nil
-}

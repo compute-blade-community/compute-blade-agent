@@ -3,9 +3,9 @@
 # Listen configuration
 listen:
   metrics: ":9666"
-  grpc: "localhost:8081"
-  authenticated: true
-  mode: tcp # tcp or unix
+  grpc: /tmp/compute-blade-agent.sock
+  authenticated: false
+  mode: unix # tcp or unix
 
 # Hardware abstraction layer configuration
 hal:

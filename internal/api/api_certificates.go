@@ -77,7 +77,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			)
 		}
 
-		blade, herr := bladectlconfig.FindCurrentBlade(bladectlConfig)
+		blade, herr := bladectlConfig.FindBlade("")
 		if herr != nil {
 			return herr
 		}

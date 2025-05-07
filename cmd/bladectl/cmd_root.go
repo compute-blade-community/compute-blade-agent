@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"
@@ -23,6 +24,16 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+var (
+	bladeName string
+	timeout   time.Duration
+)
+
+func init() {
+	rootCmd.PersistentFlags().StringVar(&bladeName, "blade", "", "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
+	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "timeout for gRPC requests")
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "bladectl",
@@ -41,7 +52,13 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		blade, herr := bladectlconfig.FindCurrentBlade(bladectlCfg)
+		var blade *bladectlconfig.Blade
+
+		if len(bladeName) > 0 {
+
+		}
+
+		blade, herr := bladectlCfg.FindBlade(bladeName)
 		if herr != nil {
 			return fmt.Errorf(herr.Display())
 		}

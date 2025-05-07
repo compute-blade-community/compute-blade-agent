@@ -30,9 +30,13 @@ type Certificate struct {
 	ClientKeyData            string `yaml:"client-key-data,omitempty" mapstructure:"client-key-data,omitempty"`
 }
 
-func FindCurrentBlade(config BladectlConfig) (*Blade, humane.Error) {
-	for _, blade := range config.Blades {
-		if blade.Name == config.CurrentBlade {
+func (c *BladectlConfig) FindBlade(name string) (*Blade, humane.Error) {
+	if len(name) == 0 {
+		name = c.CurrentBlade
+	}
+
+	for _, blade := range c.Blades {
+		if blade.Name == name {
 			return &blade.Blade, nil
 		}
 	}
