@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
-	"github.com/uptime-industries/compute-blade-agent/pkg/bladectlconfig"
+	"github.com/uptime-industries/compute-blade-agent/cmd/bladectl/config"
 	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -47,13 +47,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		// load configuration
-		var bladectlCfg bladectlconfig.BladectlConfig
+		var bladectlCfg config.BladectlConfig
 		if err := viper.Unmarshal(&bladectlCfg); err != nil {
 			return err
 		}
 
-		var blade *bladectlconfig.Blade
-
+		var blade *config.Blade
 
 		blade, herr := bladectlCfg.FindBlade(bladeName)
 		if herr != nil {
@@ -125,7 +124,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func loadTlsCredentials(server string, certData bladectlconfig.Certificate) (credentials.TransportCredentials, error) {
+func loadTlsCredentials(server string, certData config.Certificate) (credentials.TransportCredentials, error) {
 	// Decode base64 certificate, key, and CA
 	certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
 	if err != nil {

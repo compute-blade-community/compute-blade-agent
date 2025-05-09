@@ -1,4 +1,4 @@
-package bladectlconfig
+package config
 
 import (
 	"encoding/base64"

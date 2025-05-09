@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/sierrasoftworks/humane-errors-go"
-	"github.com/uptime-industries/compute-blade-agent/pkg/bladectlconfig"
+	"github.com/uptime-industries/compute-blade-agent/cmd/bladectl/config"
 	"github.com/uptime-industries/compute-blade-agent/pkg/certificate"
 	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"github.com/uptime-industries/compute-blade-agent/pkg/util"
@@ -52,7 +52,7 @@ func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr 
 }
 
 func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, serverMode ListenMode) humane.Error {
-	configDir, herr := bladectlconfig.EnsureBladectlConfigHome()
+	configDir, herr := config.EnsureBladectlConfigHome()
 	if herr != nil {
 		return herr
 	}
@@ -68,7 +68,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			)
 		}
 
-		var bladectlConfig bladectlconfig.BladectlConfig
+		var bladectlConfig config.BladectlConfig
 		if err := yaml.Unmarshal(configBytes, &bladectlConfig); err != nil {
 			return humane.Wrap(err, "failed to parse bladectl config",
 				"this should never happen",
@@ -129,7 +129,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 		serverAddr = fmt.Sprintf("localhost:%s", grpcApiPort)
 	}
 
-	bladectlConfig := bladectlconfig.NewAuthenticatedBladectlConfig(serverAddr, caPEM, clientCertDER, clientKeyDER)
+	bladectlConfig := config.NewAuthenticatedBladectlConfig(serverAddr, caPEM, clientCertDER, clientKeyDER)
 	data, err := yaml.Marshal(&bladectlConfig)
 	if err != nil {
 		return humane.Wrap(err, "Failed to marshal YAML config",
@@ -154,7 +154,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 }
 
 func EnsureUnauthenticatedBladectlConfig(ctx context.Context, serverAddr string, serverMode ListenMode) humane.Error {
-	configDir, herr := bladectlconfig.EnsureBladectlConfigHome()
+	configDir, herr := config.EnsureBladectlConfigHome()
 	if herr != nil {
 		return herr
 	}
@@ -178,7 +178,7 @@ func EnsureUnauthenticatedBladectlConfig(ctx context.Context, serverAddr string,
 		serverAddr = fmt.Sprintf("localhost:%s", grpcApiPort)
 	}
 
-	bladectlConfig := bladectlconfig.NewBladectlConfig(serverAddr)
+	bladectlConfig := config.NewBladectlConfig(serverAddr)
 	data, err := yaml.Marshal(&bladectlConfig)
 	if err != nil {
 		return humane.Wrap(err, "Failed to marshal YAML config",
