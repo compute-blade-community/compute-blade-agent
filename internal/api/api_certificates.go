@@ -99,7 +99,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			return herr
 		}
 
-		certData, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientCertificateData)
+		certPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientCertificateData)
 		if err != nil {
 			return humane.Wrap(err, "failed to decode client certificate data",
 				"this should never happen",
@@ -108,7 +108,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			)
 		}
 
-		keyData, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientKeyData)
+		keyPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientKeyData)
 		if err != nil {
 			return humane.Wrap(err, "failed to decode client certificate key data",
 				"this should never happen",
@@ -117,10 +117,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			)
 		}
 
-		if _, _, err := certificate.ValidateCertificate(
-			certificate.WithCertData(certData),
-			certificate.WithCertKey(keyData),
-		); err != nil {
+		if _, _, err := certificate.ValidateCertificate(certPEM, keyPEM); err != nil {
 			return err
 		}
 

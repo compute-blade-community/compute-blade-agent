@@ -37,20 +37,11 @@ func LoadAndValidateCertificate(certPath, keyPath string) (cert *x509.Certificat
 		)
 	}
 
-	return ValidateCertificate(
-		WithCertData(certPEM),
-		WithCertKey(keyPEM),
-	)
+	return ValidateCertificate(certPEM, keyPEM)
 }
 
-func ValidateCertificate(opts ...Option) (cert *x509.Certificate, key *ecdsa.PrivateKey, herr humane.Error) {
-	options := &options{}
-
-	for _, opt := range opts {
-		opt(options)
-	}
-
-	certBlock, _ := pem.Decode(options.CertData)
+func ValidateCertificate(certPEM []byte, keyPEM []byte) (cert *x509.Certificate, key *ecdsa.PrivateKey, herr humane.Error) {
+	certBlock, _ := pem.Decode(certPEM)
 	if certBlock == nil {
 		return nil, nil, humane.New("failed to decode certificate",
 			"Verify if the certificate is valid by run the following command:",
@@ -66,7 +57,7 @@ func ValidateCertificate(opts ...Option) (cert *x509.Certificate, key *ecdsa.Pri
 		)
 	}
 
-	keyBlock, _ := pem.Decode(options.KeyData)
+	keyBlock, _ := pem.Decode(keyPEM)
 	if keyBlock == nil {
 		return nil, nil, humane.New("failed to decode certificate",
 			"Verify if the key-file is valid by run the following command:",
