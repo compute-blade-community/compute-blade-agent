@@ -40,6 +40,8 @@ func LoadAndValidateCertificate(certPath, keyPath string) (cert *x509.Certificat
 	return ValidateCertificate(certPEM, keyPEM)
 }
 
+// ValidateCertificate validates a PEM-encoded certificate and private key, ensuring the private key matches the certificate.
+// Returns a parsed *x509.Certificate, *ecdsa.PrivateKey, or a humane.Error if any issue occurs during validation or parsing.
 func ValidateCertificate(certPEM []byte, keyPEM []byte) (cert *x509.Certificate, key *ecdsa.PrivateKey, herr humane.Error) {
 	certBlock, _ := pem.Decode(certPEM)
 	if certBlock == nil {
@@ -90,8 +92,12 @@ func ValidateCertificate(certPEM []byte, keyPEM []byte) (cert *x509.Certificate,
 
 // GenerateCertificate generates a certificate and private key based on provided options and outputs them in DER format.
 // It supports client and server certificates, returning the certificate, private key, and an error if generation fails.
-func GenerateCertificate(opts ...Option) (certDER, keyDER []byte, herr humane.Error) {
-	options := &options{}
+func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []byte, herr humane.Error) {
+	options := &options{
+		Usage:  UsageClient,
+		CaCert: nil,
+		CaKey:  nil,
+	}
 
 	for _, opt := range opts {
 		opt(options)
@@ -132,10 +138,10 @@ func GenerateCertificate(opts ...Option) (certDER, keyDER []byte, herr humane.Er
 		)
 	}
 
-	clientTemplate := &x509.Certificate{
+	certTemplate := &x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
 		Subject: pkix.Name{
-			CommonName: options.CommonName,
+			CommonName: commonName,
 		},
 		NotBefore:   time.Now(),
 		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
@@ -153,7 +159,16 @@ func GenerateCertificate(opts ...Option) (certDER, keyDER []byte, herr humane.Er
 		)
 	}
 
-	certDER, err = x509.CreateCertificate(rand.Reader, clientTemplate, options.CaCert, &clientKey.PublicKey, options.CaKey)
+	// prevent nil pointer exceptions by using the cert key as signing key and generate a
+	// self-signed certificate, if no CA is provided
+	signingCert := certTemplate
+	signingKey := clientKey
+	if options.CaCert != nil && options.CaKey != nil {
+		signingCert = options.CaCert
+		signingKey = options.CaKey
+	}
+
+	certDER, err = x509.CreateCertificate(rand.Reader, certTemplate, signingCert, &clientKey.PublicKey, signingKey)
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to create client certificate",
 			"this should never happen",

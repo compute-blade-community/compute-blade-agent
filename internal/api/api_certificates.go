@@ -44,7 +44,8 @@ func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr 
 		return nil, nil, nil, humane.Wrap(herr, "No valid CA found to sign the client certificate")
 	}
 
-	certDER, keyDER, herr := certificate.GenerateCertificate(certificate.WithCommonName(commonName),
+	certDER, keyDER, herr := certificate.GenerateCertificate(
+		commonName,
 		certificate.WithClientUsage(),
 		certificate.WithCaCert(caCert),
 		certificate.WithCaKey(caKey),
@@ -254,7 +255,7 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 	// Generate Server Keys
 	log.FromContext(ctx).Debug("Generating new server certificate...")
 	serverCertDER, serverKeyDER, herr := certificate.GenerateCertificate(
-		certificate.WithCommonName("Compute Blade Agent"),
+		"Compute Blade Agent",
 		certificate.WithServerUsage(),
 		certificate.WithCaCert(caCert),
 		certificate.WithCaKey(caKey),
