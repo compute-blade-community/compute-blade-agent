@@ -43,17 +43,3 @@ func WithListenMode(mode string) GrpcApiServiceOption {
 		service.listenMode = lMode
 	}
 }
-
-// FIXME: No dead code
-//func WithTCP() GrpcApiServiceOption {
-//	return func(service *AgentGrpcService) {
-//		service.listenMode = ModeTcp
-//	}
-//}
-
-// FIXME: No dead code
-//func WithUnixSocket() GrpcApiServiceOption {
-//	return func(service *AgentGrpcService) {
-//		service.listenMode = ModeUnix
-//	}
-//}

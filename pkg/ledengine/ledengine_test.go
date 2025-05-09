@@ -113,31 +113,6 @@ func TestNewBurstPattern(t *testing.T) {
 	}
 }
 
-// FIXME: No dead code
-//func TestNewSlowBlinkPattern(t *testing.T) {
-//	type args struct {
-//		baseColor   led.Color
-//		activeColor led.Color
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want ledengine.BlinkPattern
-//	}{
-//		// TODO: Add test cases.
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			if got := ledengine.NewSlowBlinkPattern(tt.args.baseColor, tt.args.activeColor); !reflect.DeepEqual(
-//				got,
-//				tt.want,
-//			) {
-//				t.Errorf("NewSlowLedEngine.BlinkPattern() = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}
-
 func TestNewLedEngine(t *testing.T) {
 	t.Parallel()
 	engine := ledengine.Options{
