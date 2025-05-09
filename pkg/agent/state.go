@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/spechtlabs/go-otel-utils/otelzap"
 	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 	"go.uber.org/zap"
 )
@@ -63,7 +64,7 @@ func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 		s.criticalConfirmChan = make(chan struct{})
 
 	default:
-		zap.L().Warn("Unknown event", zap.String("event", event.String()))
+		otelzap.L().Warn("Unknown event", zap.String("event", event.String()))
 	}
 
 	// Set identify state metric

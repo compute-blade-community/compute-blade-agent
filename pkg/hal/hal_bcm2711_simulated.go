@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/spechtlabs/go-otel-utils/otelzap"
 	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 	"go.uber.org/zap"
 )
@@ -19,7 +20,7 @@ type SimulatedHal struct {
 }
 
 func NewCm4Hal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
-	logger := zap.L().Named("hal").Named("simulated-cm4")
+	logger := otelzap.L().Named("hal").Named("simulated-cm4")
 	logger.Warn("Using simulated hal")
 
 	computeModule.WithLabelValues("simulated").Set(1)

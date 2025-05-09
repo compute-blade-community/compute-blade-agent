@@ -89,6 +89,7 @@ BLADE_LISTEN_METRICS=":1234"
 | `BLADE_FAN_SPEED_PERCENT=80`                      | Set static fan speed                     |
 | `BLADE_CRITICAL_TEMPERATURE_THRESHOLD=60`         | Set critical temp threshold (°C)         |
 | `BLADE_HAL_RPM_REPORTING_STANDARD_FAN_UNIT=false` | Disable RPM monitoring for lower CPU use |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`                     | Endpoint for the OTLP exporter           |
 
 ## Exposing the gRPC API for Remote Access
 

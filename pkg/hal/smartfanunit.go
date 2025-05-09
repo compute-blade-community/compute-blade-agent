@@ -14,7 +14,6 @@ import (
 	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
 	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 	"go.bug.st/serial"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,7 +31,7 @@ func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 	defer func(rwc serial.Port) {
 		err := rwc.Close()
 		if err != nil {
-			log.FromContext(ctx).Warn("Error while closing serial port", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Warn("Error while closing serial port")
 		}
 	}(rwc)
 
@@ -42,7 +41,7 @@ func SmartFanUnitPresent(ctx context.Context, portName string) (bool, error) {
 		log.FromContext(ctx).Warn("Closing serial port")
 		err := rwc.Close()
 		if err != nil {
-			log.FromContext(ctx).Warn("Error while closing serial port", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Warn("Error while closing serial port")
 		}
 	}()
 
@@ -117,7 +116,7 @@ func (fuc *smartFanUnit) Run(parentCtx context.Context) error {
 
 			pkt, err := proto.ReadPacket(ctx, fuc.rwc)
 			if err != nil {
-				log.FromContext(ctx).Error("Failed to read packet from serial port", zap.Error(err))
+				log.FromContext(ctx).WithError(err).Error("Failed to read packet from serial port")
 				continue
 			}
 			fuc.eb.Publish(inboundTopic, pkt)

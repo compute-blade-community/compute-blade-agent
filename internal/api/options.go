@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/spechtlabs/go-otel-utils/otelzap"
 	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
 	"go.uber.org/zap"
 )
@@ -34,7 +35,7 @@ func WithListenMode(mode string) GrpcApiServiceOption {
 	return func(service *AgentGrpcService) {
 		lMode, err := ListenModeFromString(mode)
 		if err != nil {
-			zap.L().Fatal(err.Error(),
+			otelzap.L().Fatal(err.Error(),
 				zap.String("mode", mode),
 				zap.Strings("advice", err.Advice()),
 			)

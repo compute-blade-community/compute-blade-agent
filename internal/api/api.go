@@ -12,6 +12,7 @@ import (
 	agent2 "github.com/uptime-industries/compute-blade-agent/pkg/agent"
 	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 	"github.com/uptime-industries/compute-blade-agent/pkg/log"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -72,10 +73,7 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 		// Load server's certificate and private key
 		cert, certPool, err := EnsureServerCertificate(ctx)
 		if err != nil {
-			log.FromContext(ctx).Fatal("failed to load server key pair",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+			log.FromContext(ctx).WithError(err).Fatal("failed to load server key pair")
 		}
 
 		// Create the TLS config that enforces mTLS for client authentication
@@ -90,24 +88,19 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 
 		// Make sure we have a local bladectl config with authentication enabled
 		if err := EnsureAuthenticatedBladectlConfig(ctx, service.listenAddr, service.listenMode); err != nil {
-			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+			log.FromContext(ctx).WithError(err).Fatal("failed to ensure proper local bladectl config")
 		}
 	} else {
 		// Make sure we have a local bladectl config with no authentication enabled
 		if err := EnsureUnauthenticatedBladectlConfig(ctx, service.listenAddr, service.listenMode); err != nil {
-			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+			log.FromContext(ctx).WithError(err).Fatal("failed to ensure proper local bladectl config")
 		}
 	}
 
 	// Add Logging Middleware
-	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(log.InterceptorLogger(zap.L()))))
-	grpcOpts = append(grpcOpts, grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(log.InterceptorLogger(zap.L()))))
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(log.InterceptorLogger(log.FromContext(ctx)))))
+	grpcOpts = append(grpcOpts, grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(log.InterceptorLogger(log.FromContext(ctx)))))
+	grpcOpts = append(grpcOpts, grpc.StatsHandler(otelgrpc.NewServerHandler()))
 
 	// Make server
 	service.server = grpc.NewServer(grpcOpts...)
@@ -121,11 +114,7 @@ func (s *AgentGrpcService) ServeAsync(ctx context.Context, cancel context.Cancel
 	go func() {
 		err := s.Serve(ctx)
 		if err != nil {
-			log.FromContext(ctx).Error("Failed to start grpc server",
-				zap.Error(err),
-				zap.String("cause", err.Cause().Error()),
-				zap.Strings("advice", err.Advice()),
-			)
+			log.FromContext(ctx).WithError(err).Error("Failed to start grpc server")
 
 			cancel(err.Cause())
 		}
