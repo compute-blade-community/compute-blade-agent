@@ -54,9 +54,6 @@ var rootCmd = &cobra.Command{
 
 		var blade *bladectlconfig.Blade
 
-		if len(bladeName) > 0 {
-
-		}
 
 		blade, herr := bladectlCfg.FindBlade(bladeName)
 		if herr != nil {
