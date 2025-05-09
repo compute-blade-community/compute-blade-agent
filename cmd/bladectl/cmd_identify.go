@@ -36,8 +36,6 @@ var cmdRmIdentify = &cobra.Command{
 }
 
 func runSetIdentify(cmd *cobra.Command, _ []string) error {
-	var err error
-
 	ctx := cmd.Context()
 	client := clientFromContext(ctx)
 
@@ -48,7 +46,7 @@ func runSetIdentify(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Emit the event to the compute-blade-agent
-	_, err = client.EmitEvent(ctx, &bladeapiv1alpha1.EmitEventRequest{Event: event})
+	_, err := client.EmitEvent(ctx, &bladeapiv1alpha1.EmitEventRequest{Event: event})
 	if err != nil {
 		return fmt.Errorf(humane.Wrap(err,
 			"failed to emit event",
