@@ -28,7 +28,7 @@ var (
 	Date    string
 )
 
-var debug = pflag.BoolP("debug", "d", false, "enable debug logging")
+var debug = pflag.BoolP("debug", "v", false, "enable verbose logging")
 
 func main() {
 	pflag.Parse()
