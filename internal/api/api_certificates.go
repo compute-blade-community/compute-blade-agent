@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
@@ -38,17 +39,34 @@ var (
 // It validates the CA certificate and private key before generating the client certificate.
 // Returns CA certificate, client certificate, private key in PEM format, and any error encountered.
 func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr humane.Error) {
-	caCert, caKey, err := certificate.LoadAndValidateCertificate(caPath, caKeyPath)
-	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "No valid CA found to sign the client certificate")
+	caCert, caKey, herr := certificate.LoadAndValidateCertificate(caPath, caKeyPath)
+	if herr != nil {
+		return nil, nil, nil, humane.Wrap(herr, "No valid CA found to sign the client certificate")
 	}
 
-	return certificate.GenerateCertificate(certificate.WithCommonName(commonName),
+	certDER, keyDER, herr := certificate.GenerateCertificate(certificate.WithCommonName(commonName),
 		certificate.WithClientUsage(),
 		certificate.WithCaCert(caCert),
 		certificate.WithCaKey(caKey),
 		certificate.WithOutputFormatPEM(),
 	)
+	if herr != nil {
+		return nil, nil, nil, humane.Wrap(herr, "failed to generate client certificate")
+	}
+
+	// Load CA PEM
+	caPEM, err := os.ReadFile(caPath)
+	if err != nil {
+		return nil, nil, nil, humane.Wrap(err, "failed to read CA",
+			fmt.Sprintf("ensure the certificate file %s exists and is readable by the agent user", caPath),
+		)
+	}
+
+	// Convert DER to PEM
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+
+	return caPEM, certPEM, keyPEM, nil
 }
 
 func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, serverMode ListenMode) humane.Error {
@@ -239,22 +257,21 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 
 	// Generate Server Keys
 	log.FromContext(ctx).Debug("Generating new server certificate...")
-	_, serverCertPEM, serverKeyPEM, herr := certificate.GenerateCertificate(
+	serverCertDER, serverKeyDER, herr := certificate.GenerateCertificate(
 		certificate.WithCommonName("Compute Blade Agent"),
 		certificate.WithServerUsage(),
 		certificate.WithCaCert(caCert),
 		certificate.WithCaKey(caKey),
-		certificate.WithOutputFormatPEM(),
 	)
 	if herr != nil {
 		return tls.Certificate{}, nil, herr
 	}
 
-	if err := certificate.WriteCertificate(caPath, caKeyPath,
-		certificate.WithInputFormatPEM(),
+	if err := certificate.WriteCertificate(serverCertPath, serverKeyPath,
+		certificate.WithInputFormatDER(),
 		certificate.WithOutputFormatPEM(),
-		certificate.WithCertData(serverCertPEM),
-		certificate.WithCertKey(serverKeyPEM),
+		certificate.WithCertData(serverCertDER),
+		certificate.WithCertKey(serverKeyDER),
 	); err != nil {
 		return tls.Certificate{}, nil, err
 	}
@@ -265,7 +282,7 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 		zap.String("ca", caPath),
 	)
 
-	cert, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	cert, err := tls.LoadX509KeyPair(serverCertPath, serverKeyPath)
 	if err != nil {
 		return tls.Certificate{}, nil, humane.Wrap(err, "failed to parse generated server certificate",
 			"this should never happen",
@@ -332,7 +349,7 @@ func ensureCA(ctx context.Context) humane.Error {
 	}
 
 	if err := certificate.WriteCertificate(caPath, caKeyPath,
-		certificate.WithInputFormatPEM(),
+		certificate.WithInputFormatDER(),
 		certificate.WithOutputFormatPEM(),
 		certificate.WithCertData(caCertDER),
 		certificate.WithCertKey(caKeyBytes),

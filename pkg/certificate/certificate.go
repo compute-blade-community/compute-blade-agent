@@ -97,11 +97,9 @@ func ValidateCertificate(opts ...Option) (cert *x509.Certificate, key *ecdsa.Pri
 	return cert, key, nil
 }
 
-// GenerateCertificate generates a certificate and private key based on the provided options.
-// It supports usage for both client and server certificates and outputs data in PEM or DER formats.
-// Returns the CA certificate used for signing, the generated certificate, and private key as byte slices
-// in the output format requested, or an error if processing fails.
-func GenerateCertificate(opts ...Option) (caPEM, certPEM, keyPEM []byte, herr humane.Error) {
+// GenerateCertificate generates a certificate and private key based on provided options and outputs them in DER format.
+// It supports client and server certificates, returning the certificate, private key, and an error if generation fails.
+func GenerateCertificate(opts ...Option) (certDER, keyDER []byte, herr humane.Error) {
 	options := &options{}
 
 	for _, opt := range opts {
@@ -110,7 +108,7 @@ func GenerateCertificate(opts ...Option) (caPEM, certPEM, keyPEM []byte, herr hu
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to extract hostname",
+		return nil, nil, humane.Wrap(err, "failed to extract hostname",
 			"this should never happen",
 			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 		)
@@ -130,14 +128,14 @@ func GenerateCertificate(opts ...Option) (caPEM, certPEM, keyPEM []byte, herr hu
 
 		// And add all the host-ips
 		if hostIps, err = util.GetHostIPs(); err != nil {
-			return nil, nil, nil, humane.Wrap(err, "failed to extract server IPs",
+			return nil, nil, humane.Wrap(err, "failed to extract server IPs",
 				"this should never happen",
 				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 			)
 		}
 
 	default:
-		return nil, nil, nil, humane.New(fmt.Sprintf("invalid certificate usage %s", options.Usage.String()),
+		return nil, nil, humane.New(fmt.Sprintf("invalid certificate usage %s", options.Usage.String()),
 			"this should never happen",
 			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 		)
@@ -158,15 +156,15 @@ func GenerateCertificate(opts ...Option) (caPEM, certPEM, keyPEM []byte, herr hu
 
 	clientKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to generate client key",
+		return nil, nil, humane.Wrap(err, "failed to generate client key",
 			"this should never happen",
 			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 		)
 	}
 
-	certDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, options.CaCert, &clientKey.PublicKey, options.CaKey)
+	certDER, err = x509.CreateCertificate(rand.Reader, clientTemplate, options.CaCert, &clientKey.PublicKey, options.CaKey)
 	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to create client certificate",
+		return nil, nil, humane.Wrap(err, "failed to create client certificate",
 			"this should never happen",
 			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 		)
@@ -174,37 +172,13 @@ func GenerateCertificate(opts ...Option) (caPEM, certPEM, keyPEM []byte, herr hu
 
 	clientKeyBytes, err := x509.MarshalECPrivateKey(clientKey)
 	if err != nil {
-		return nil, nil, nil, humane.Wrap(err, "failed to marshal client private key",
+		return nil, nil, humane.Wrap(err, "failed to marshal client private key",
 			"this should never happen",
 			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
 		)
 	}
 
-	switch options.OutputFormat {
-	case FormatPEM:
-		caCertPEM, err := x509.CreateCertificate(rand.Reader, options.CaCert, options.CaCert, &options.CaCert.PublicKey, options.CaKey)
-		if err != nil {
-			return nil, nil, nil, humane.Wrap(err, "failed to marshal client private key",
-				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-			)
-		}
-
-		caPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertPEM})
-		certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-		keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: clientKeyBytes})
-
-		return caPEM, certPEM, keyPEM, nil
-
-	case FormatDER:
-		return certDER, certDER, clientKeyBytes, nil
-
-	default:
-		return nil, nil, nil, humane.New(fmt.Sprintf("invalid output format %s", options.OutputFormat.String()),
-			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-		)
-	}
+	return certDER, clientKeyBytes, nil
 }
 
 // WriteCertificate writes the given certificate and key data to the specified file paths with optional configuration.
@@ -229,36 +203,6 @@ func WriteCertificate(certPath, keyPath string, opts ...Option) humane.Error {
 			keyData = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: options.KeyData})
 
 		case FormatPEM:
-			// Nothing to do
-			certData = options.CertData
-			keyData = options.KeyData
-
-		default:
-			return humane.New(fmt.Sprintf("invalid input/output format combination (input: %s, output: %s)",
-				options.InputFormat.String(), options.OutputFormat.String()),
-				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-			)
-		}
-
-	case FormatDER:
-		switch options.InputFormat {
-		case FormatPEM:
-			certBlock, _ := pem.Decode(options.CertData)
-			keyBlock, _ := pem.Decode(options.KeyData)
-
-			if certBlock == nil {
-				return humane.New("failed to decode certificate")
-			}
-
-			if keyBlock == nil {
-				return humane.New("failed to decode certificate")
-			}
-
-			certData = certBlock.Bytes
-			keyData = keyBlock.Bytes
-
-		case FormatDER:
 			// Nothing to do
 			certData = options.CertData
 			keyData = options.KeyData

@@ -48,14 +48,9 @@ func WithOutputFormatPEM() Option {
 	return WithOutputFormat(FormatPEM)
 }
 
-// FIXME: No dead code
-//func WithOutputFormatDER() Option {
-//	return WithOutputFormat(FormatDER)
-//}
-
 func WithInputFormat(format Format) Option {
 	return func(o *options) {
-		o.OutputFormat = format
+		o.InputFormat = format
 	}
 }
 
@@ -63,10 +58,9 @@ func WithInputFormatPEM() Option {
 	return WithInputFormat(FormatPEM)
 }
 
-// FIXME: No dead code
-//func WithInputFormatDER() Option {
-//	return WithInputFormat(FormatDER)
-//}
+func WithInputFormatDER() Option {
+	return WithInputFormat(FormatDER)
+}
 
 func WithCaCert(cert *x509.Certificate) Option {
 	return func(o *options) {

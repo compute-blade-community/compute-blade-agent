@@ -80,10 +80,9 @@ func NewGrpcApiServer(ctx context.Context, options ...GrpcApiServiceOption) *Age
 
 		// Create the TLS config that enforces mTLS for client authentication
 		tlsConfig := &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			ClientAuth:         tls.VerifyClientCertIfGiven, //tls.RequireAndVerifyClientCert, // FIXME
-			ClientCAs:          certPool,
-			InsecureSkipVerify: true, // FIXME
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
 		}
 
 		// Append the mTLS credentials to our gRPC Options to enable authenticated clients

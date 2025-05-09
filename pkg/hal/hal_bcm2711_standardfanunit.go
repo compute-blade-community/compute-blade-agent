@@ -23,7 +23,7 @@ type standardFanUnitBcm2711 struct {
 }
 
 func (fu standardFanUnitBcm2711) Kind() FanUnitKind {
-	if fu.DisableRPMreporting {
+	if fu.DisableRpmReporting {
 		return FanUnitKindStandardNoRPM
 	}
 	return FanUnitKindStandard
@@ -34,7 +34,7 @@ func (fu standardFanUnitBcm2711) Run(ctx context.Context) error {
 	fanUnit.WithLabelValues("standard").Set(1)
 
 	// Register edge event handler for fan tachometer input
-	if !fu.DisableRPMreporting {
+	if !fu.DisableRpmReporting {
 		fu.fanEdgeLine, err = fu.GpioChip0.RequestLine(
 			rpi.GPIO13,
 			gpiod.WithEventHandler(fu.handleFanEdge),

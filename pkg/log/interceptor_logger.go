@@ -9,7 +9,7 @@ import (
 
 // InterceptorLogger adapts zap logger to interceptor logger.
 // This code is simple enough to be copied and not imported.
-func InterceptorLogger(_ *zap.Logger) logging.Logger {
+func InterceptorLogger(l *zap.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
 		f := make([]zap.Field, 0, len(fields)/2)
 
@@ -29,7 +29,7 @@ func InterceptorLogger(_ *zap.Logger) logging.Logger {
 			}
 		}
 
-		logger := FromContext(ctx).WithOptions(zap.AddCallerSkip(1)).With(f...)
+		logger := zap.L().WithOptions(zap.AddCallerSkip(4)).With(f...)
 
 		switch lvl {
 		case logging.LevelDebug:

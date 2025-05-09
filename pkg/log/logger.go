@@ -17,6 +17,7 @@ func FromContext(ctx context.Context) *zap.Logger {
 	if val != nil {
 		return val.(*zap.Logger)
 	}
-	zap.L().Warn("No logger in context, passing default")
+
+	zap.L().WithOptions(zap.AddCallerSkip(1)).Warn("No logger in context, passing default")
 	return zap.L()
 }

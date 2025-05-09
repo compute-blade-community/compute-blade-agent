@@ -204,7 +204,7 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 		bcm.gpioMem[bcm2711RegGpfsel1] = (bcm.gpioMem[bcm2711RegGpfsel1] &^ (0b111 << 6)) | (0b100 << 6)
 		bcm.fanUnit = &standardFanUnitBcm2711{
 			GpioChip0:           bcm.gpioChip0,
-			DisableRPMreporting: !bcm.opts.RpmReportingStandardFanUnit,
+			DisableRpmReporting: !bcm.opts.RpmReportingStandardFanUnit,
 			SetFanSpeedPwmFunc: func(speed uint8) error {
 				bcm.setFanSpeedPWM(speed)
 				return nil
