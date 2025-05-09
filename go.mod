@@ -6,13 +6,15 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20241125132722-d032d7dd359e
-	github.com/spechtlabs/go-otel-utils/otelzap v0.0.8
+	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.8
+	github.com/spechtlabs/go-otel-utils/otelzap v0.0.9
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.10.0
 	github.com/warthog618/gpiod v0.8.1
 	go.bug.st/serial v1.6.1
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.71.0
@@ -45,14 +47,12 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.0 // indirect
-	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.8 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.11.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0 // indirect
