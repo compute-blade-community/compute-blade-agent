@@ -6,14 +6,12 @@ import (
 )
 
 type options struct {
-	OutputFormat Format
-	InputFormat  Format
-	CaCert       *x509.Certificate
-	CaKey        *ecdsa.PrivateKey
-	CommonName   string
-	Usage        Usage
-	CertData     []byte
-	KeyData      []byte
+	CaCert     *x509.Certificate
+	CaKey      *ecdsa.PrivateKey
+	CommonName string
+	Usage      Usage
+	CertData   []byte
+	KeyData    []byte
 }
 
 type Option func(*options)
@@ -36,30 +34,6 @@ func WithClientUsage() Option {
 
 func WithServerUsage() Option {
 	return WithUsage(UsageServer)
-}
-
-func WithOutputFormat(format Format) Option {
-	return func(o *options) {
-		o.OutputFormat = format
-	}
-}
-
-func WithOutputFormatPEM() Option {
-	return WithOutputFormat(FormatPEM)
-}
-
-func WithInputFormat(format Format) Option {
-	return func(o *options) {
-		o.InputFormat = format
-	}
-}
-
-func WithInputFormatPEM() Option {
-	return WithInputFormat(FormatPEM)
-}
-
-func WithInputFormatDER() Option {
-	return WithInputFormat(FormatDER)
 }
 
 func WithCaCert(cert *x509.Certificate) Option {

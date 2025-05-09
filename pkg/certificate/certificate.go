@@ -181,55 +181,24 @@ func GenerateCertificate(opts ...Option) (certDER, keyDER []byte, herr humane.Er
 	return certDER, clientKeyBytes, nil
 }
 
-// WriteCertificate writes the given certificate and key data to the specified file paths with optional configuration.
-// It supports different input and output formats such as PEM and DER for the conversion process.
-// Returns a humane.Error if the write operation fails or an invalid format combination is detected.
-func WriteCertificate(certPath, keyPath string, opts ...Option) humane.Error {
-	options := options{}
-	for _, opt := range opts {
-		opt(&options)
-	}
+// WriteCertificate writes a certificate and its private key to the specified file paths in PEM format.
+// certPath specifies the file path to write the certificate PEM data.
+// keyPath specifies the file path to write the private key PEM data.
+// certDataDER is the DER-encoded certificate data to be written.
+// keyDataDER is the DER-encoded private key data to be written.
+// Returns a humane.Error if writing to the files fails.
+func WriteCertificate(certPath, keyPath string, certDataDER []byte, keyDataDER []byte) humane.Error {
 
-	var (
-		certData []byte
-		keyData  []byte
-	)
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDataDER})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDataDER})
 
-	switch options.OutputFormat {
-	case FormatPEM:
-		switch options.InputFormat {
-		case FormatDER:
-			certData = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: options.CertData})
-			keyData = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: options.KeyData})
-
-		case FormatPEM:
-			// Nothing to do
-			certData = options.CertData
-			keyData = options.KeyData
-
-		default:
-			return humane.New(fmt.Sprintf("invalid input/output format combination (input: %s, output: %s)",
-				options.InputFormat.String(), options.OutputFormat.String()),
-				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-			)
-		}
-
-	default:
-		return humane.New(fmt.Sprintf("invalid input/output format combination (input: %s, output: %s)",
-			options.InputFormat.String(), options.OutputFormat.String()),
-			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
-		)
-	}
-
-	if err := os.WriteFile(certPath, certData, 0600); err != nil {
+	if err := os.WriteFile(certPath, certPEM, 0600); err != nil {
 		return humane.Wrap(err, "failed to write certificate file",
 			"ensure the directory you are trying to create exists and is writable by the agent user",
 		)
 	}
 
-	if err := os.WriteFile(keyPath, keyData, 0600); err != nil {
+	if err := os.WriteFile(keyPath, keyPEM, 0600); err != nil {
 		return humane.Wrap(err, "failed to write key file",
 			"ensure the directory you are trying to create exists and is writable by the agent user",
 		)

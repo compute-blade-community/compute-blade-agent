@@ -48,7 +48,6 @@ func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr 
 		certificate.WithClientUsage(),
 		certificate.WithCaCert(caCert),
 		certificate.WithCaKey(caKey),
-		certificate.WithOutputFormatPEM(),
 	)
 	if herr != nil {
 		return nil, nil, nil, humane.Wrap(herr, "failed to generate client certificate")
@@ -267,12 +266,7 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 		return tls.Certificate{}, nil, herr
 	}
 
-	if err := certificate.WriteCertificate(serverCertPath, serverKeyPath,
-		certificate.WithInputFormatDER(),
-		certificate.WithOutputFormatPEM(),
-		certificate.WithCertData(serverCertDER),
-		certificate.WithCertKey(serverKeyDER),
-	); err != nil {
+	if err := certificate.WriteCertificate(serverCertPath, serverKeyPath, serverCertDER, serverKeyDER); err != nil {
 		return tls.Certificate{}, nil, err
 	}
 
@@ -348,12 +342,7 @@ func ensureCA(ctx context.Context) humane.Error {
 		)
 	}
 
-	if err := certificate.WriteCertificate(caPath, caKeyPath,
-		certificate.WithInputFormatDER(),
-		certificate.WithOutputFormatPEM(),
-		certificate.WithCertData(caCertDER),
-		certificate.WithCertKey(caKeyBytes),
-	); err != nil {
+	if err := certificate.WriteCertificate(caPath, caKeyPath, caCertDER, caKeyBytes); err != nil {
 		return err
 	}
 
