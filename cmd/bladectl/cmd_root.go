@@ -97,8 +97,7 @@ var rootCmd = &cobra.Command{
 
 			serverName := blade.Server
 			if strings.Contains(serverName, ":") {
-				serverName, _, err = net.SplitHostPort(blade.Server)
-				if err != nil {
+				if serverName, _, err = net.SplitHostPort(blade.Server); err != nil {
 					return fmt.Errorf("failed to parse server address: %w", err)
 				}
 			}
