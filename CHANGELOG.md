@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.0.0](https://github.com/uptime-industries/compute-blade-agent/compare/v0.6.6...v1.0.0) (2025-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **agent:** add support for mTLS authentication in gRPC server ([#54](https://github.com/uptime-industries/compute-blade-agent/issues/54))
+
+### Features
+
+* **agent:** add support for mTLS authentication in gRPC server ([#54](https://github.com/uptime-industries/compute-blade-agent/issues/54)) ([70541d8](https://github.com/uptime-industries/compute-blade-agent/commit/70541d86bad675a153daf8b5c80a92de204502ab))
+* **agent:** expose version, commit, and date information in logs for better tracking ([ec6229a](https://github.com/uptime-industries/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* **bladectl:** implement command structure for managing compute-blade features ([ec6229a](https://github.com/uptime-industries/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* **goreleaser:** add versioning information to builds for better traceability ([ec6229a](https://github.com/uptime-industries/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+
+
+### Bug Fixes
+
+* **.gitignore:** add .idea directory to ignore list to prevent IDE files from being tracked ([ec6229a](https://github.com/uptime-industries/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* **bladectl:** improve error handling in identify command for better user feedback ([ec6229a](https://github.com/uptime-industries/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+
 ## [0.6.6](https://github.com/uptime-industries/compute-blade-agent/compare/v0.6.5...v0.6.6) (2025-01-14)
 
 
