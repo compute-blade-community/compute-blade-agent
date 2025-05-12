@@ -30,9 +30,10 @@ const (
 	bcm2711ClkManagerPwd     = (0x5A << 24) //(31 - 24) on CM_GP0CTL/CM_GP1CTL/CM_GP2CTL regs
 	bcm2711PageSize          = 4096         // theoretical page size
 
-	bcm2711FrontButtonPin = 20
-	bcm2711StealthPin     = 21
-	bcm2711RegPwmTachPin  = 13
+	// FIXME: no dead code
+	//bcm2711FrontButtonPin = 20
+	//bcm2711StealthPin     = 21
+	//bcm2711RegPwmTachPin  = 13
 
 	bcm2711RegGpfsel1 = 0x01
 
@@ -164,7 +165,7 @@ func (bcm *bcm2711) Close() error {
 
 // Init initialises GPIOs and sets sane defaults
 func (bcm *bcm2711) setup(ctx context.Context) error {
-	var err error = nil
+	var err error
 
 	// Register edge event handler for edge button
 	bcm.edgeButtonLine, err = bcm.gpioChip0.RequestLine(
@@ -408,7 +409,9 @@ func (bcm *bcm2711) SetLed(idx uint, color led.Color) error {
 
 	// Update the fan unit LED if the index is the same as the fan unit LED index
 	if idx == LedEdge {
-		bcm.fanUnit.SetLed(context.TODO(), color)
+		if err := bcm.fanUnit.SetLed(context.TODO(), color); err != nil {
+			return err
+		}
 	}
 
 	bcm.leds[idx] = color
@@ -425,7 +428,9 @@ func (bcm *bcm2711) updateLEDs() error {
 
 	// Set frequency to 3*800khz.
 	// we'll bit-bang the data, so we'll need to send 3 bits per one bit of data.
-	bcm.setPwm0Freq(3 * 800000)
+	if err := bcm.setPwm0Freq(3 * 800000); err != nil {
+		return err
+	}
 	time.Sleep(10 * time.Microsecond)
 
 	// WS281x Output (GPIO 18)

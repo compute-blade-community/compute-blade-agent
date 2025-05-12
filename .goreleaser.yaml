@@ -1,32 +1,52 @@
+version: 2
+
 project_name: compute-blade-agent
 
+before:
+  hooks:
+    - go mod tidy
+
 builds:
-  - env: &env
-    - CGO_ENABLED=0
+  - id: agent
+    env: &env
+      - CGO_ENABLED=0
     goos: &goos
-    - linux
+      - linux
     goarch: &goarch
-    - arm64
+      - arm64
     binary: compute-blade-agent
-    id: agent
     dir: ./cmd/agent/
     mod_timestamp: "{{ .CommitTimestamp }}"
-    ldflags:
+    ldflags: &ldflags
       - -X=main.Version={{.Version}}
       - -X=main.Commit={{.Commit}}
       - -X=main.Date={{ .CommitTimestamp }}
 
-  - env: *env
+  - id: bladectl
+    env: *env
     goos: *goos
     goarch: *goarch
     binary: bladectl
-    id: bladectl
     dir: ./cmd/bladectl/
     mod_timestamp: "{{ .CommitTimestamp }}"
-    ldflags:
-      - -X=main.Version={{.Version}}
-      - -X=main.Commit={{.Commit}}
-      - -X=main.Date={{ .CommitTimestamp }}
+    ldflags: *ldflags
+
+  - id: bladectl_other
+    env: *env
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: linux
+        goarch: arm64
+    binary: bladectl
+    dir: ./cmd/bladectl/
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags: *ldflags
 
 # Docker image including both agent and bladectl
 dockers:
@@ -35,8 +55,8 @@ dockers:
     goos: linux
     goarch: arm64
     ids:
-    - agent
-    - bladectl
+      - agent
+      - bladectl
     image_templates:
       - ghcr.io/github.com/uptime-industries/compute-blade-agent:latest
       - ghcr.io/github.com/uptime-industries/compute-blade-agent:{{ .Tag }}
@@ -77,9 +97,14 @@ signs:
 # Regular OS packages (for now only systemd based OSes)
 nfpms:
 - id: compute-blade-agent
+  package_name: compute-blade-agent
+  ids:
+    - bladectl
+    - agent
   maintainer: Matthias Riegler <me@xvzf.tech>
   description: compute-blade Agent
   homepage: https://github.com/github.com/uptime-industries/compute-blade-agent
+  vendor: Uptime Industries Inc.
   license: Apache 2.0
   formats:
   - deb
@@ -94,6 +119,35 @@ nfpms:
     type: config
   - src: ./fanunit.uf2
     dst: /usr/share/compute-blade-agent/fanunit.uf2
+
+- id: bladectl
+  package_name: bladectl
+  ids:
+    - bladectl
+    - bladectl_other
+  maintainer: Matthias Riegler <me@xvzf.tech>
+  description: bladectl
+  homepage: https://github.com/github.com/uptime-industries/compute-blade-agent
+  vendor: Uptime Industries Inc.
+  license: Apache 2.0
+  formats:
+    - deb
+    - rpm
+    - archlinux
+  bindir: /usr/bin
+
+archives:
+  - id: compute-blade-agent
+    ids:
+      - agent
+      - bladectl
+    name_template: 'compute-blade-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+
+  - id: bladectl
+    ids:
+      - bladectl
+      - bladectl_other
+    name_template: 'bladectl_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
 release:
   extra_files:
