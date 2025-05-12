@@ -8,10 +8,16 @@ on:
       - edited
       - synchronize
 
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
 jobs:
   pr_title:
     name: "Validate PR Title"
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     permissions:
