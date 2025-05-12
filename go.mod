@@ -1,13 +1,15 @@
 module github.com/uptime-industries/compute-blade-agent
 
-go 1.24.0
+go 1.23.0
+
+toolchain go1.24.3
 
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20241125132722-d032d7dd359e
-	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.8
-	github.com/spechtlabs/go-otel-utils/otelzap v0.0.9
+	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.10
+	github.com/spechtlabs/go-otel-utils/otelzap v0.0.10
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0

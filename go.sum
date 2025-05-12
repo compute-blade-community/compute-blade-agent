@@ -193,10 +193,10 @@ github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWN
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sierrasoftworks/humane-errors-go v0.0.0-20241125132722-d032d7dd359e h1:TRjhbclA0br24WOCSltVovqcwOLTKRLRzQmuSBY5mQc=
 github.com/sierrasoftworks/humane-errors-go v0.0.0-20241125132722-d032d7dd359e/go.mod h1:j7jIbd4vmh7c8kUuM4wNOqqEaMcG+UWVyem6d26pai4=
-github.com/spechtlabs/go-otel-utils/otelprovider v0.0.8 h1:QE5n0ReT+dpMGyJH1z8RD5GrzkxF3ZsYwNcrUJw6nPA=
-github.com/spechtlabs/go-otel-utils/otelprovider v0.0.8/go.mod h1:eXwaYnplhrfg/WXkIQ8ziC68Xa4wR7C0RilMBVpU9nM=
-github.com/spechtlabs/go-otel-utils/otelzap v0.0.9 h1:d1+B4hsaQpYiJOOTY0c0O20YLOH8dfAlve1ciCdoETQ=
-github.com/spechtlabs/go-otel-utils/otelzap v0.0.9/go.mod h1:o24+LjpaBj+p0ip3AfzMenLXUn/jpkMPUBeN+FCTn7U=
+github.com/spechtlabs/go-otel-utils/otelprovider v0.0.10 h1:Q5p+5KGA587GfzR6FdXGje4XBfxhi1u4NSu6lSnWCGA=
+github.com/spechtlabs/go-otel-utils/otelprovider v0.0.10/go.mod h1:sFuJXEBbNq/pQx9pP5OnVtx9yGJnH4fXi7x3qihW0ak=
+github.com/spechtlabs/go-otel-utils/otelzap v0.0.10 h1:RR/WS4b+ABxNL7xzlK4FTvnuXRbGk3yyggvvLnQ+FeM=
+github.com/spechtlabs/go-otel-utils/otelzap v0.0.10/go.mod h1:IhsBuW+sZwLxX1Ww5LmTlIonBP8GiyhsiZkIRq+ySE0=
 github.com/spf13/afero v1.9.5 h1:stMpOSZFs//0Lv29HduCmli3GUfpFoF3Y1Q/aXj/wVM=
 github.com/spf13/afero v1.9.5/go.mod h1:UBogFpq8E9Hx+xc5CNTTEpTnuHVmXDwZcZcE1eb/UhQ=
 github.com/spf13/cast v1.5.1 h1:R+kOtfhWQE6TVQzY+4D7wJLBgkdVasCEFxSUBYBYIlA=
