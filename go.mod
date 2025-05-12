@@ -1,8 +1,6 @@
 module github.com/uptime-industries/compute-blade-agent
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24.0
 
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
