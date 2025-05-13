@@ -14,7 +14,6 @@ builds:
     ldflags:
       - -X=main.Version={{.Version}}
       - -X=main.Commit={{.Commit}}
-      - -X=main.Date={{ .CommitTimestamp }}
 
   - env: *env
     goos: *goos

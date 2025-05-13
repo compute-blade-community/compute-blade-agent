@@ -27,7 +27,6 @@ import (
 var (
 	Version string
 	Commit  string
-	Date    string
 )
 
 var debug = pflag.BoolP("debug", "v", false, "enable verbose logging")
@@ -59,10 +58,8 @@ func main() {
 
 	zapLogger := baseLogger.With(
 		zap.String("app", "compute-blade-agent"),
-		zap.String("scope", "global"),
 		zap.String("version", Version),
 		zap.String("commit", Commit),
-		zap.String("date", Date),
 	)
 	defer func() {
 		_ = zapLogger.Sync()
@@ -156,7 +153,7 @@ func main() {
 		}
 	}()
 
-	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit), zap.String("date", Date))
+	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent")
 	computebladeAgent, err := agent.NewComputeBladeAgent(ctx, cbAgentConfig)
 	if err != nil {
 		cancelCtx(err)
@@ -183,13 +180,17 @@ func main() {
 	// Wait for done
 	<-ctx.Done()
 
+	// Since ctx is now done, we can no longer use it to get `log.FromContext(ctx)`
+	// but we must use otelzap.L() to get a logger
+
+	// Shut down gRPC and Prom Servers async
 	var wg sync.WaitGroup
 
 	// Shut-Down GRPC Server
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.FromContext(ctx).Info("Shutting down grpc server")
+		otelzap.L().Info("Shutting down grpc server")
 		grpcServer.GracefulStop()
 	}()
 
@@ -201,18 +202,19 @@ func main() {
 		shutdownCtx, shutdownCtxCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCtxCancel()
 
+		otelzap.L().Info("Shutting down prometheus/pprof server")
 		if err := promServer.Shutdown(shutdownCtx); err != nil {
-			log.FromContext(ctx).WithError(err).Error("Failed to shutdown prometheus/pprof server")
+			otelzap.L().WithError(err).Error("Failed to shutdown prometheus/pprof server")
 		}
 	}()
 
 	wg.Wait()
 
-	// Wait for context cancel
+	// Terminate accordingly
 	if err := ctx.Err(); !errors.Is(err, context.Canceled) {
-		log.FromContext(ctx).WithError(err).Fatal("Exiting")
+		otelzap.L().WithError(err).Fatal("Exiting")
 	} else {
-		log.FromContext(ctx).Info("Exiting")
+		otelzap.L().Info("Exiting")
 	}
 }
 
