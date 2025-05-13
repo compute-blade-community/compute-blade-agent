@@ -98,7 +98,7 @@ func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.Can
 func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	var wg sync.WaitGroup
 	ctx, cancelCtx := context.WithCancelCause(origCtx)
-	defer cancelCtx(fmt.Errorf("cancel"))
+	defer cancelCtx(context.Canceled)
 	defer a.cleanup(ctx)
 
 	log.FromContext(ctx).Info("Starting ComputeBlade agent")
