@@ -58,9 +58,9 @@ dockers:
       - agent
       - bladectl
     image_templates:
-      - ghcr.io/github.com/uptime-industries/compute-blade-agent:latest
-      - ghcr.io/github.com/uptime-industries/compute-blade-agent:{{ .Tag }}
-      - ghcr.io/github.com/uptime-industries/compute-blade-agent:v{{ .Major }}
+      - ghcr.io/uptime-industries/compute-blade-agent:latest
+      - ghcr.io/uptime-industries/compute-blade-agent:{{ .Tag }}
+      - ghcr.io/uptime-industries/compute-blade-agent:v{{ .Major }}
     build_flag_templates:
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
