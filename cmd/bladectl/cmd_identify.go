@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-
+	"errors"
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"
 	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
@@ -48,7 +47,7 @@ func runSetIdentify(cmd *cobra.Command, _ []string) error {
 	// Emit the event to the compute-blade-agent
 	_, err := client.EmitEvent(ctx, &bladeapiv1alpha1.EmitEventRequest{Event: event})
 	if err != nil {
-		return fmt.Errorf(humane.Wrap(err,
+		return errors.New(humane.Wrap(err,
 			"failed to emit event",
 			"ensure the compute-blade agent is running and responsive to requests",
 			"check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'",
@@ -75,7 +74,7 @@ func runRemoveIdentify(cmd *cobra.Command, _ []string) error {
 	// Emit the event to the compute-blade-agent
 	_, err := client.EmitEvent(ctx, &bladeapiv1alpha1.EmitEventRequest{Event: bladeapiv1alpha1.Event_IDENTIFY_CONFIRM})
 	if err != nil {
-		return fmt.Errorf(humane.Wrap(err,
+		return errors.New(humane.Wrap(err,
 			"failed to emit event",
 			"ensure the compute-blade agent is running and responsive to requests",
 			"check the compute-blade agent logs for more information using 'journalctl -u compute-blade-agent.service'",

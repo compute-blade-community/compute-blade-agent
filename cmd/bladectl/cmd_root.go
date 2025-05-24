@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -56,7 +57,7 @@ var rootCmd = &cobra.Command{
 
 		blade, herr := bladectlCfg.FindBlade(bladeName)
 		if herr != nil {
-			return fmt.Errorf(herr.Display())
+			return errors.New(herr.Display())
 		}
 
 		// setup signal handlers for SIGINT and SIGTERM
@@ -109,7 +110,7 @@ var rootCmd = &cobra.Command{
 
 		conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(credentials))
 		if err != nil {
-			return fmt.Errorf(
+			return errors.New(
 				humane.Wrap(err,
 					"failed to dial grpc server",
 					"ensure the gRPC server you are trying to connect to is running and the address is correct",

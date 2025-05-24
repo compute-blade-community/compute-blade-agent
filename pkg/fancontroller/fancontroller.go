@@ -48,7 +48,7 @@ func NewLinearFanController(config Config) (FanController, humane.Error) {
 	}
 
 	for _, step := range steps {
-		if step.Percent > 100 || step.Percent < 0 {
+		if step.Percent > 100 {
 			return nil, humane.New("fan percent must be between 0 and 100",
 				fmt.Sprintf("Ensure your fan percentage is 0 < %d < 100", step.Percent),
 			)

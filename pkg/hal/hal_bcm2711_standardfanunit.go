@@ -4,6 +4,8 @@ package hal
 
 import (
 	"context"
+	"github.com/uptime-industries/compute-blade-agent/pkg/log"
+	"go.uber.org/zap"
 	"math"
 
 	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
@@ -44,7 +46,12 @@ func (fu standardFanUnitBcm2711) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		defer fu.fanEdgeLine.Close()
+		defer func(fanEdgeLine *gpiod.Line) {
+			err := fanEdgeLine.Close()
+			if err != nil {
+				log.FromContext(ctx).Error("failed to close fanEdgeLine", zap.Error(err))
+			}
+		}(fu.fanEdgeLine)
 	}
 
 	<-ctx.Done()
