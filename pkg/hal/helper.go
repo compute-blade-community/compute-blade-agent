@@ -4,7 +4,6 @@ package hal
 
 import (
 	"os"
-	"reflect"
 	"syscall"
 	"unsafe"
 )
@@ -20,10 +19,10 @@ func mmap(file *os.File, base int64, length int) ([]uint32, []uint8, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	// We'll have to work with 32 bit registers, so let's convert it.
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&mem8))
-	header.Len /= (32 / 8)
-	header.Cap /= (32 / 8)
-	mem32 := *(*[]uint32)(unsafe.Pointer(&header))
+
+	// Convert []uint8 to []uint32 using unsafe.Slice
+	ptr := unsafe.Pointer(&mem8[0])
+	mem32 := unsafe.Slice((*uint32)(ptr), len(mem8)/4)
+
 	return mem32, mem8, nil
 }
