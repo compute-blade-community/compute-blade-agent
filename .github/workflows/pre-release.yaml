@@ -1,0 +1,20 @@
+name: Go Build - Pre-Release
+
+on:
+  push:
+    branches: [ main ]
+
+permissions: write-all
+
+jobs:
+  # Release-please for auto-updated PRs
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        id: release-please
+        with:
+          release-type: simple  # actual releasing is handled by goreleaser
+          package-name: compute-blade-agent
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
