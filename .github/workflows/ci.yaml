@@ -85,6 +85,7 @@ jobs:
       contents:      read
       actions:       read  # to download code coverage results from "test" job
       pull-requests: write # write permission needed to comment on PR
+      statuses:      write # write permission needed to comment on PR
 
     steps:
       - uses: fgrosse/go-coverage-report@v1.2.0
