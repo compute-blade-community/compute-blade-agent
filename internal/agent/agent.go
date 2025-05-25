@@ -1,15 +1,20 @@
-package agent
+package internal_agent
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
+	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	agent2 "github.com/uptime-industries/compute-blade-agent/pkg/agent"
+	"github.com/sierrasoftworks/humane-errors-go"
+	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
 	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
 	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
@@ -17,6 +22,11 @@ import (
 	"github.com/uptime-industries/compute-blade-agent/pkg/ledengine"
 	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -37,20 +47,21 @@ var (
 
 // computeBladeAgentImpl is the implementation of the ComputeBladeAgent interface
 type computeBladeAgentImpl struct {
-	opts          ComputeBladeAgentConfig
+	bladeapiv1alpha1.UnimplementedBladeAgentServiceServer
+	config        agent.ComputeBladeAgentConfig
 	blade         hal.ComputeBladeHal
-	state         agent2.ComputebladeState
+	state         agent.ComputebladeState
 	edgeLedEngine ledengine.LedEngine
 	topLedEngine  ledengine.LedEngine
 	fanController fancontroller.FanController
 	eventChan     chan events.Event
+	server        *grpc.Server
 }
 
-func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (agent2.ComputeBladeAgent, error) {
+func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentConfig) (agent.ComputeBladeAgent, error) {
 	var err error
 
-	// blade, err := hal.NewCm4Hal(hal.ComputeBladeHalOpts{
-	blade, err := hal.NewCm4Hal(ctx, opts.ComputeBladeHalOpts)
+	blade, err := hal.NewCm4Hal(ctx, config.ComputeBladeHalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -65,23 +76,82 @@ func NewComputeBladeAgent(ctx context.Context, opts ComputeBladeAgentConfig) (ag
 		Hal:    blade,
 	})
 
-	fanController, err := fancontroller.NewLinearFanController(opts.FanControllerConfig)
+	fanController, err := fancontroller.NewLinearFanController(config.FanControllerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return &computeBladeAgentImpl{
-		opts:          opts,
+	agent := &computeBladeAgentImpl{
+		config:        config,
 		blade:         blade,
 		edgeLedEngine: edgeLedEngine,
 		topLedEngine:  topLedEngine,
 		fanController: fanController,
-		state:         agent2.NewComputeBladeState(),
+		state:         agent.NewComputeBladeState(),
 		eventChan: make(
 			chan events.Event,
 			10,
 		), // backlog of 10 events. They should process fast but we e.g. don't want to miss button presses
-	}, nil
+	}
+
+	listenMode, err := ListenModeFromString(agent.config.Listen.GrpcListenMode)
+	if err != nil {
+		return nil, err
+	}
+
+	grpcOpts := make([]grpc.ServerOption, 0)
+
+	// If we run our gRPC Server TLS with authentication enabled
+	if listenMode == ModeTcp && agent.config.Listen.GrpcAuthenticated {
+		// Load server's certificate and private key
+		cert, certPool, err := EnsureServerCertificate(ctx)
+		if err != nil {
+			log.FromContext(ctx).Fatal("failed to load server key pair",
+				zap.Error(err),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
+
+		// Create the TLS config that enforces mTLS for client authentication
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+		}
+
+		// Append the mTLS credentials to our gRPC Options to enable authenticated clients
+		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+
+		// Make sure we have a local bladectl config with authentication enabled
+		if err := EnsureAuthenticatedBladectlConfig(ctx, agent.config.Listen.Grpc, listenMode); err != nil {
+			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
+				zap.Error(err),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
+	} else {
+		// Make sure we have a local bladectl config with no authentication enabled
+		if err := EnsureUnauthenticatedBladectlConfig(ctx, agent.config.Listen.Grpc, listenMode); err != nil {
+			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
+				zap.Error(err),
+				zap.Strings("advice", err.Advice()),
+			)
+		}
+	}
+
+	// Add Logging Middleware
+	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(log.InterceptorLogger(zap.L()))))
+	grpcOpts = append(grpcOpts, grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(log.InterceptorLogger(zap.L()))))
+
+	// Make server
+	agent.server = grpc.NewServer(grpcOpts...)
+	bladeapiv1alpha1.RegisterBladeAgentServiceServer(agent.server, agent)
+
+	return agent, nil
+}
+
+func (a *computeBladeAgentImpl) GetConfig() agent.ComputeBladeAgentConfig {
+	return a.config
 }
 
 func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.CancelCauseFunc) {
@@ -99,7 +169,6 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	var wg sync.WaitGroup
 	ctx, cancelCtx := context.WithCancelCause(origCtx)
 	defer cancelCtx(fmt.Errorf("cancel"))
-	defer a.cleanup(ctx)
 
 	log.FromContext(ctx).Info("Starting ComputeBlade agent")
 
@@ -107,7 +176,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	a.state.RegisterEvent(events.NoopEvent)
 
 	// Set defaults
-	if err := a.blade.SetStealthMode(a.opts.StealthModeEnabled); err != nil {
+	if err := a.blade.SetStealthMode(a.config.StealthModeEnabled); err != nil {
 		return err
 	}
 
@@ -199,12 +268,42 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		}
 	}()
 
+	// Start gRPC API
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if len(a.config.Listen.Grpc) == 0 {
+			err := humane.New("no listen address provided",
+				"ensure you are passing a valid listen config to the grpc server",
+			)
+			log.FromContext(ctx).Error("no listen address provided, not starting gRPC server", humane.Zap(err)...)
+			cancelCtx(err)
+		}
+
+		grpcListen, err := net.Listen(a.config.Listen.GrpcListenMode, a.config.Listen.Grpc)
+		if err != nil {
+			err := humane.Wrap(err, "failed to create grpc listener",
+				"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
+			)
+			log.FromContext(ctx).Error("failed to create grpc listener, not starting gRPC server", humane.Zap(err)...)
+			cancelCtx(err)
+		}
+
+		log.FromContext(ctx).Info("Starting grpc server", zap.String("address", a.config.Listen.Grpc))
+		if err := a.server.Serve(grpcListen); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			log.FromContext(ctx).Error("failed to start grpc server", humane.Zap(err)...)
+			cancelCtx(err)
+		}
+	}()
+
 	wg.Wait()
 	return ctx.Err()
 }
 
-// cleanup restores sane defaults before exiting. Ignores canceled context!
-func (a *computeBladeAgentImpl) cleanup(ctx context.Context) {
+// GracefulStop gracefully stops the gRPC server, ensuring all in-progress RPCs are completed before shutting down.
+func (a *computeBladeAgentImpl) GracefulStop(ctx context.Context) error {
+	a.server.GracefulStop()
+
 	log.FromContext(ctx).Info("Exiting, restoring safe settings")
 	if err := a.blade.SetFanSpeed(100); err != nil {
 		log.FromContext(ctx).Error("Failed to set fan speed to 100%", zap.Error(err))
@@ -215,46 +314,92 @@ func (a *computeBladeAgentImpl) cleanup(ctx context.Context) {
 	if err := a.blade.SetLed(hal.LedTop, led.Color{}); err != nil {
 		log.FromContext(ctx).Error("Failed to set edge LED to off", zap.Error(err))
 	}
-	if err := a.Close(); err != nil {
-		log.FromContext(ctx).Error("Failed to close blade", zap.Error(err))
-	}
+
+	return errors.Join(a.blade.Close())
 }
 
 // EmitEvent dispatches an event to the event handler
-func (a *computeBladeAgentImpl) EmitEvent(ctx context.Context, event events.Event) error {
+func (a *computeBladeAgentImpl) EmitEvent(ctx context.Context, req *bladeapiv1alpha1.EmitEventRequest) (*emptypb.Empty, error) {
+	event, err := fromProto(req.GetEvent())
+	if err != nil {
+		return nil, err
+	}
+
 	select {
 	case a.eventChan <- event:
-		return nil
+		return &emptypb.Empty{}, nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return &emptypb.Empty{}, ctx.Err()
 	}
 }
 
 // SetFanSpeed sets the fan speed
-func (a *computeBladeAgentImpl) SetFanSpeed(_ context.Context, speed uint8) error {
+func (a *computeBladeAgentImpl) SetFanSpeed(_ context.Context, req *bladeapiv1alpha1.SetFanSpeedRequest) (*emptypb.Empty, error) {
 	if a.state.CriticalActive() {
-		return errors.New("cannot set fan speed while the blade is in a critical state")
+		return &emptypb.Empty{}, humane.New("cannot set fan speed while the blade is in a critical state", "improve cooling on your blade before attempting to overwrite the fan speed")
 	}
-	a.fanController.Override(&fancontroller.FanOverrideOpts{Percent: speed})
-	return nil
+
+	a.fanController.Override(&fancontroller.FanOverrideOpts{Percent: uint8(req.GetPercent())})
+	return &emptypb.Empty{}, nil
+}
+
+// SetFanSpeedAuto sets the fan speed to automatic mode
+func (a *computeBladeAgentImpl) SetFanSpeedAuto(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	a.fanController.Override(nil)
+	return &emptypb.Empty{}, nil
 }
 
 // SetStealthMode enables/disables the stealth mode
-func (a *computeBladeAgentImpl) SetStealthMode(_ context.Context, enabled bool) error {
+func (a *computeBladeAgentImpl) SetStealthMode(_ context.Context, req *bladeapiv1alpha1.StealthModeRequest) (*emptypb.Empty, error) {
 	if a.state.CriticalActive() {
-		return errors.New("cannot set stealth mode while the blade is in a critical state")
+		return &emptypb.Empty{}, humane.New("cannot set stealth mode while the blade is in a critical state", "improve cooling on your blade before attempting to enable stealth mode again")
 	}
-	return a.blade.SetStealthMode(enabled)
+	return &emptypb.Empty{}, a.blade.SetStealthMode(req.GetEnable())
 }
 
-// WaitForIdentifyConfirm waits for the identify confirm event
-func (a *computeBladeAgentImpl) WaitForIdentifyConfirm(ctx context.Context) error {
-	return a.state.WaitForIdentifyConfirm(ctx)
+// GetStatus aggregates the status of the blade
+func (a *computeBladeAgentImpl) GetStatus(_ context.Context, _ *emptypb.Empty) (*bladeapiv1alpha1.StatusResponse, error) {
+	rpm, err := a.blade.GetFanRPM()
+	if err != nil {
+		return nil, err
+	}
+
+	temp, err := a.blade.GetTemperature()
+	if err != nil {
+		return nil, err
+	}
+
+	powerStatus, err := a.blade.GetPowerStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	steps := a.fanController.Config().Steps
+	fanCurveSteps := make([]*bladeapiv1alpha1.FanCurveStep, len(steps))
+	for idx, step := range steps {
+		fanCurveSteps[idx] = &bladeapiv1alpha1.FanCurveStep{
+			Temperature: int64(step.Temperature),
+			Percent:     uint32(step.Percent),
+		}
+	}
+
+	return &bladeapiv1alpha1.StatusResponse{
+		StealthMode:                  a.blade.StealthModeActive(),
+		IdentifyActive:               a.state.IdentifyActive(),
+		CriticalActive:               a.state.CriticalActive(),
+		Temperature:                  int64(temp),
+		FanRpm:                       int64(rpm),
+		FanPercent:                   uint32(a.fanController.GetFanSpeedPercent(temp)),
+		FanSpeedAutomatic:            a.fanController.IsAutomaticSpeed(),
+		PowerStatus:                  bladeapiv1alpha1.PowerStatus(powerStatus),
+		FanCurveSteps:                fanCurveSteps,
+		CriticalTemperatureThreshold: int64(a.config.CriticalTemperatureThreshold),
+	}, nil
 }
 
-// Close shuts down the underlying blade instance and releases any associated resources, returning a combined error if any.
-func (a *computeBladeAgentImpl) Close() error {
-	return errors.Join(a.blade.Close())
+// WaitForIdentifyConfirm blocks until the identify confirmation process is completed or an error occurs.
+func (a *computeBladeAgentImpl) WaitForIdentifyConfirm(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, a.state.WaitForIdentifyConfirm(ctx)
 }
 
 func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event events.Event) error {
@@ -298,12 +443,12 @@ func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event events.Ev
 
 func (a *computeBladeAgentImpl) handleIdentifyActive(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify active")
-	return a.edgeLedEngine.SetPattern(ledengine.NewBurstPattern(led.Color{}, a.opts.IdentifyLedColor))
+	return a.edgeLedEngine.SetPattern(ledengine.NewBurstPattern(led.Color{}, a.config.IdentifyLedColor))
 }
 
 func (a *computeBladeAgentImpl) handleIdentifyConfirm(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify confirmed/cleared")
-	return a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.opts.IdleLedColor))
+	return a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor))
 }
 
 func (a *computeBladeAgentImpl) handleCriticalActive(ctx context.Context) error {
@@ -317,7 +462,7 @@ func (a *computeBladeAgentImpl) handleCriticalActive(ctx context.Context) error 
 
 	// Set critical pattern for top LED
 	setPatternTopLedErr := a.topLedEngine.SetPattern(
-		ledengine.NewSlowBlinkPattern(led.Color{}, a.opts.CriticalLedColor),
+		ledengine.NewSlowBlinkPattern(led.Color{}, a.config.CriticalLedColor),
 	)
 	// Combine errors, but don't stop execution flow for now
 	return errors.Join(setStealthModeError, setPatternTopLedErr)
@@ -329,7 +474,7 @@ func (a *computeBladeAgentImpl) handleCriticalReset(ctx context.Context) error {
 	a.fanController.Override(nil)
 
 	// Reset stealth mode
-	if err := a.blade.SetStealthMode(a.opts.StealthModeEnabled); err != nil {
+	if err := a.blade.SetStealthMode(a.config.StealthModeEnabled); err != nil {
 		return err
 	}
 
@@ -353,7 +498,7 @@ func (a *computeBladeAgentImpl) runTopLedEngine(ctx context.Context) error {
 
 // runEdgeLedEngine runs the edge LED engine
 func (a *computeBladeAgentImpl) runEdgeLedEngine(ctx context.Context) error {
-	err := a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.opts.IdleLedColor))
+	err := a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor))
 	if err != nil {
 		return err
 	}
@@ -381,10 +526,25 @@ func (a *computeBladeAgentImpl) runFanController(ctx context.Context) error {
 			temp = 100 // set to a high value to trigger the maximum speed defined by the fan curve
 		}
 		// Derive fan speed from temperature
-		speed := a.fanController.GetFanSpeed(temp)
+		speed := a.fanController.GetFanSpeedPercent(temp)
 		// Set fan speed
 		if err := a.blade.SetFanSpeed(speed); err != nil {
 			log.FromContext(ctx).Error("Failed to set fan speed", zap.Error(err))
 		}
+	}
+}
+
+func fromProto(event bladeapiv1alpha1.Event) (events.Event, error) {
+	switch event {
+	case bladeapiv1alpha1.Event_IDENTIFY:
+		return events.IdentifyEvent, nil
+	case bladeapiv1alpha1.Event_IDENTIFY_CONFIRM:
+		return events.IdentifyConfirmEvent, nil
+	case bladeapiv1alpha1.Event_CRITICAL:
+		return events.CriticalEvent, nil
+	case bladeapiv1alpha1.Event_CRITICAL_RESET:
+		return events.CriticalResetEvent, nil
+	default:
+		return events.NoopEvent, status.Errorf(codes.InvalidArgument, "invalid event type")
 	}
 }

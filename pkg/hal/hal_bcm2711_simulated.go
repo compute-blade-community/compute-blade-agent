@@ -15,7 +15,8 @@ var _ ComputeBladeHal = &SimulatedHal{}
 
 // SimulatedHal implements a mock for the ComputeBladeHal interface
 type SimulatedHal struct {
-	logger *zap.Logger
+	logger        *zap.Logger
+	isStealthMode bool
 }
 
 func NewCm4Hal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
@@ -57,8 +58,14 @@ func (m *SimulatedHal) SetStealthMode(enabled bool) error {
 	} else {
 		stealthModeEnabled.Set(0)
 	}
+
+	m.isStealthMode = enabled
 	m.logger.Info("SetStealthMode", zap.Bool("enabled", enabled))
 	return nil
+}
+
+func (m *SimulatedHal) StealthModeActive() bool {
+	return m.isStealthMode
 }
 
 func (m *SimulatedHal) GetPowerStatus() (PowerStatus, error) {

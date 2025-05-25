@@ -73,6 +73,8 @@ var rootCmd = &cobra.Command{
 
 			// Wait for signal
 			case sig := <-sigs:
+				fmt.Println("Received signal", sig.String())
+
 				switch sig {
 				case syscall.SIGTERM:
 					fallthrough
@@ -119,7 +121,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		client := bladeapiv1alpha1.NewBladeAgentServiceClient(conn)
-		cmd.SetContext(clientIntoContext(ctx, client))
+		cmd.SetContext(clientIntoContext(origCtx, client))
 		return nil
 	},
 }

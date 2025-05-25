@@ -35,7 +35,7 @@ func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 		temperature := tc.temperature
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
-			speed := controller.GetFanSpeed(temperature)
+			speed := controller.GetFanSpeedPercent(temperature)
 			if speed != expected {
 				t.Errorf("For temperature %.2f, expected speed %d but got %d", temperature, expected, speed)
 			}
@@ -75,7 +75,7 @@ func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 		temperature := tc.temperature
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
-			speed := controller.GetFanSpeed(temperature)
+			speed := controller.GetFanSpeedPercent(temperature)
 			if speed != expected {
 				t.Errorf("For temperature %.2f, expected speed %d but got %d", temperature, expected, speed)
 			}

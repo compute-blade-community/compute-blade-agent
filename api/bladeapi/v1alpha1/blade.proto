@@ -1,4 +1,4 @@
-syntax = "proto4";
+syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 package api.bladeapi.v1alpha1;
@@ -37,6 +37,11 @@ message EmitEventRequest {
   Event event = 1;
 }
 
+message FanCurveStep {
+  int64 temperature = 1;
+  uint32 percent = 2;
+}
+
 message StatusResponse {
   bool stealth_mode = 1;
   bool identify_active = 2;
@@ -44,6 +49,10 @@ message StatusResponse {
   int64 temperature = 4;
   int64 fan_rpm = 5;
   PowerStatus power_status = 6;
+  uint32 fan_percent = 7;
+  bool fan_speed_automatic = 8;
+  int64 critical_temperature_threshold = 9;
+  repeated FanCurveStep fan_curve_steps = 10;
 }
 
 service BladeAgentService {
@@ -53,9 +62,17 @@ service BladeAgentService {
   // WaitForIdentifyConfirm blocks until the blades button is pressed
   rpc WaitForIdentifyConfirm(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 
+  // Sets the fan speed to a specific value.
   rpc SetFanSpeed(SetFanSpeedRequest) returns (google.protobuf.Empty) {}
 
+  // Sets the fan speed to automatic mode.
+  //
+  // Internally, this is equivalent to calling SetFanSpeed with a nil/empty value.
+  rpc SetFanSpeedAuto(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
+  // Sets the blade to stealth mode (disables all LEDs)
   rpc SetStealthMode(StealthModeRequest) returns (google.protobuf.Empty) {}
 
+  // Gets the current status of the blade
   rpc GetStatus(google.protobuf.Empty) returns (StatusResponse) {}
 }

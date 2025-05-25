@@ -40,6 +40,11 @@ func (m *ComputeBladeHalMock) SetStealthMode(enabled bool) error {
 	return args.Error(0)
 }
 
+func (m *ComputeBladeHalMock) StealthModeActive() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
 func (m *ComputeBladeHalMock) GetPowerStatus() (PowerStatus, error) {
 	args := m.Called()
 	return args.Get(0).(PowerStatus), args.Error(1)

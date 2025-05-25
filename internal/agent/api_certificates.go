@@ -1,4 +1,4 @@
-package api
+package internal_agent
 
 import (
 	"context"

@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/uptime-industries/compute-blade-agent/internal/agent"
-	"github.com/uptime-industries/compute-blade-agent/internal/api"
+	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
 	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
@@ -98,7 +98,7 @@ func main() {
 	}()
 
 	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit), zap.String("date", Date))
-	computebladeAgent, err := agent.NewComputeBladeAgent(ctx, cbAgentConfig)
+	computebladeAgent, err := internal_agent.NewComputeBladeAgent(ctx, cbAgentConfig)
 	if err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).Fatal("Failed to create agent", zap.Error(err))
@@ -106,17 +106,6 @@ func main() {
 
 	// Run agent
 	computebladeAgent.RunAsync(ctx, cancelCtx)
-
-	// Setup GRPC server
-	grpcServer := api.NewGrpcApiServer(ctx,
-		api.WithComputeBladeAgent(computebladeAgent),
-		api.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
-		api.WithListenAddr(cbAgentConfig.Listen.Grpc),
-		api.WithListenMode(cbAgentConfig.Listen.GrpcListenMode),
-	)
-
-	// Run gRPC API
-	grpcServer.ServeAsync(ctx, cancelCtx)
 
 	// setup prometheus endpoint
 	promServer := runPrometheusEndpoint(ctx, cancelCtx, &cbAgentConfig.Listen)
@@ -130,8 +119,11 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.FromContext(ctx).Info("Shutting down grpc server")
-		grpcServer.GracefulStop()
+		log.FromContext(ctx).Info("Shutting down compute blade agent...")
+
+		if err := computebladeAgent.GracefulStop(ctx); err != nil {
+			log.FromContext(ctx).Error("Failed to close compute blade agent", zap.Error(err))
+		}
 	}()
 
 	// Shut-Down Prometheus Endpoint
@@ -157,7 +149,7 @@ func main() {
 	}
 }
 
-func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *api.Config) *http.Server {
+func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *agent.ApiConfig) *http.Server {
 	instrumentationHandler := http.NewServeMux()
 	instrumentationHandler.Handle("/metrics", promhttp.Handler())
 	instrumentationHandler.HandleFunc("/debug/pprof/", pprof.Index)

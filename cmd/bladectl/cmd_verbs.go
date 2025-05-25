@@ -7,6 +7,8 @@ import (
 func init() {
 	rootCmd.AddCommand(cmdGet)
 	rootCmd.AddCommand(cmdSet)
+	rootCmd.AddCommand(cmdRemove)
+	rootCmd.AddCommand(cmdDescribe)
 }
 
 var (
@@ -14,6 +16,12 @@ var (
 		Use:   "get",
 		Short: "Display compute-blade related information",
 		Long:  "Prints information about compute-blade related information, e.g. fan speed, temperature, etc.",
+	}
+
+	cmdDescribe = &cobra.Command{
+		Use:   "describe",
+		Short: "Display compute-blade related information",
+		Long:  "Prints information about compute-blade related information, e.g. fan speed curve steps, etc.",
 	}
 
 	cmdSet = &cobra.Command{
