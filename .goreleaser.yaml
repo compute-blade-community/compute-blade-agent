@@ -103,7 +103,7 @@ nfpms:
     - agent
   maintainer: Matthias Riegler <me@xvzf.tech>
   description: compute-blade Agent
-  homepage: https://github.com/github.com/uptime-industries/compute-blade-agent
+  homepage: https://github.com/uptime-industries/compute-blade-agent
   vendor: Uptime Industries Inc.
   license: Apache 2.0
   formats:
@@ -127,7 +127,7 @@ nfpms:
     - bladectl_other
   maintainer: Matthias Riegler <me@xvzf.tech>
   description: bladectl
-  homepage: https://github.com/github.com/uptime-industries/compute-blade-agent
+  homepage: https://github.com/uptime-industries/compute-blade-agent
   vendor: Uptime Industries Inc.
   license: Apache 2.0
   formats:
