@@ -85,9 +85,9 @@ func (m *SimulatedHal) WaitForEdgeButtonPress(ctx context.Context) error {
 	}
 }
 
-func (m *SimulatedHal) SetLed(idx uint, color led.Color) error {
+func (m *SimulatedHal) SetLed(idx LedIndex, color led.Color) error {
 	ledColorChangeEventCount.Inc()
-	m.logger.Info("SetLed", zap.Uint("idx", idx), zap.Any("color", color))
+	m.logger.Info("SetLed", zap.Uint("idx", uint(idx)), zap.Any("color", color))
 	return nil
 }
 

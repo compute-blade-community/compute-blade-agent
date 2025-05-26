@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
@@ -59,101 +58,91 @@ type computeBladeAgentImpl struct {
 }
 
 func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentConfig) (agent.ComputeBladeAgent, error) {
-	var err error
-
 	blade, err := hal.NewCm4Hal(ctx, config.ComputeBladeHalOpts)
 	if err != nil {
 		return nil, err
 	}
-
-	edgeLedEngine := ledengine.NewLedEngine(ledengine.Options{
-		LedIdx: hal.LedEdge,
-		Hal:    blade,
-	})
-
-	topLedEngine := ledengine.NewLedEngine(ledengine.Options{
-		LedIdx: hal.LedTop,
-		Hal:    blade,
-	})
 
 	fanController, err := fancontroller.NewLinearFanController(config.FanControllerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	agent := &computeBladeAgentImpl{
+	a := &computeBladeAgentImpl{
 		config:        config,
 		blade:         blade,
-		edgeLedEngine: edgeLedEngine,
-		topLedEngine:  topLedEngine,
+		edgeLedEngine: newLedEngine(blade, hal.LedEdge),
+		topLedEngine:  newLedEngine(blade, hal.LedTop),
 		fanController: fanController,
 		state:         agent.NewComputeBladeState(),
-		eventChan: make(
-			chan events.Event,
-			10,
-		), // backlog of 10 events. They should process fast but we e.g. don't want to miss button presses
+		eventChan:     make(chan events.Event, 10),
 	}
 
-	listenMode, err := ListenModeFromString(agent.config.Listen.GrpcListenMode)
-	if err != nil {
+	if err := a.setupGrpcServer(ctx); err != nil {
 		return nil, err
 	}
 
-	grpcOpts := make([]grpc.ServerOption, 0)
+	bladeapiv1alpha1.RegisterBladeAgentServiceServer(a.server, a)
+	return a, nil
+}
 
-	// If we run our gRPC Server TLS with authentication enabled
-	if listenMode == ModeTcp && agent.config.Listen.GrpcAuthenticated {
-		// Load server's certificate and private key
-		cert, certPool, err := EnsureServerCertificate(ctx)
+func newLedEngine(blade hal.ComputeBladeHal, idx hal.LedIndex) ledengine.LedEngine {
+	return ledengine.NewLedEngine(ledengine.Options{
+		LedIdx: idx,
+		Hal:    blade,
+	})
+}
+
+func (a *computeBladeAgentImpl) setupGrpcServer(ctx context.Context) error {
+	listenMode, err := ListenModeFromString(a.config.Listen.GrpcListenMode)
+	if err != nil {
+		return err
+	}
+
+	var grpcOpts []grpc.ServerOption
+
+	if listenMode == ModeTcp && a.config.Listen.GrpcAuthenticated {
+		tlsCfg, err := createServerTLSConfig(ctx)
 		if err != nil {
-			log.FromContext(ctx).Fatal("failed to load server key pair",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+			return err
 		}
+		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
 
-		// Create the TLS config that enforces mTLS for client authentication
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    certPool,
-		}
-
-		// Append the mTLS credentials to our gRPC Options to enable authenticated clients
-		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
-
-		// Make sure we have a local bladectl config with authentication enabled
-		if err := EnsureAuthenticatedBladectlConfig(ctx, agent.config.Listen.Grpc, listenMode); err != nil {
-			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+		if err := EnsureAuthenticatedBladectlConfig(ctx, a.config.Listen.Grpc, listenMode); err != nil {
+			return err
 		}
 	} else {
-		// Make sure we have a local bladectl config with no authentication enabled
-		if err := EnsureUnauthenticatedBladectlConfig(ctx, agent.config.Listen.Grpc, listenMode); err != nil {
-			log.FromContext(ctx).Fatal("failed to ensure proper local bladectl config",
-				zap.Error(err),
-				zap.Strings("advice", err.Advice()),
-			)
+		if err := EnsureUnauthenticatedBladectlConfig(ctx, a.config.Listen.Grpc, listenMode); err != nil {
+			return err
 		}
 	}
 
-	// Add Logging Middleware
-	grpcOpts = append(grpcOpts, grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(log.InterceptorLogger(zap.L()))))
-	grpcOpts = append(grpcOpts, grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(log.InterceptorLogger(zap.L()))))
+	logger := log.InterceptorLogger(zap.L())
+	grpcOpts = append(grpcOpts,
+		grpc.ChainUnaryInterceptor(grpczap.UnaryServerInterceptor(logger)),
+		grpc.ChainStreamInterceptor(grpczap.StreamServerInterceptor(logger)),
+	)
 
-	// Make server
-	agent.server = grpc.NewServer(grpcOpts...)
-	bladeapiv1alpha1.RegisterBladeAgentServiceServer(agent.server, agent)
-
-	return agent, nil
+	a.server = grpc.NewServer(grpcOpts...)
+	return nil
 }
 
-func (a *computeBladeAgentImpl) GetConfig() agent.ComputeBladeAgentConfig {
-	return a.config
+func createServerTLSConfig(ctx context.Context) (*tls.Config, error) {
+	cert, certPool, err := EnsureServerCertificate(ctx)
+	if err != nil {
+		log.FromContext(ctx).Fatal("failed to load server key pair",
+			zap.Error(err),
+			zap.Strings("advice", err.Advice()),
+		)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
+	}, nil
 }
 
+// RunAsync starts the agent in a separate goroutine and handles errors, allowing cancellation through the provided context.
 func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.CancelCauseFunc) {
 	go func() {
 		log.FromContext(ctx).Info("Starting agent")
@@ -165,8 +154,8 @@ func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.Can
 	}()
 }
 
+// Run initializes and starts the compute blade agent, setting up necessary components and processes, and waits for termination.
 func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
-	var wg sync.WaitGroup
 	ctx, cancelCtx := context.WithCancelCause(origCtx)
 	defer cancelCtx(fmt.Errorf("cancel"))
 
@@ -181,122 +170,29 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 	}
 
 	// Run HAL
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting HAL")
-		if err := a.blade.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("HAL failed", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	go a.runHal(ctx, cancelCtx)
 
 	// Start edge button event handler
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting edge button event handler")
-		for {
-			err := a.blade.WaitForEdgeButtonPress(ctx)
-			if err != nil && !errors.Is(err, context.Canceled) {
-				log.FromContext(ctx).Error("Edge button event handler failed", zap.Error(err))
-				cancelCtx(err)
-			} else if err != nil {
-				return
-			}
-			select {
-			case a.eventChan <- events.Event(events.EdgeButtonEvent):
-			default:
-				log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
-				droppedEventCounter.WithLabelValues(events.Event(events.EdgeButtonEvent).String()).Inc()
-			}
-		}
-	}()
+	go a.runEdgeButtonHandler(ctx, cancelCtx)
 
 	// Start top LED engine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting top LED engine")
-		err := a.runTopLedEngine(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Top LED engine failed", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	go a.runTopLedEngine(ctx, cancelCtx)
 
 	// Start edge LED engine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting edge LED engine")
-		err := a.runEdgeLedEngine(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Edge LED engine failed", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	go a.runEdgeLedEngine(ctx, cancelCtx)
 
 	// Start fan controller
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting fan controller")
-		err := a.runFanController(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Fan Controller Failed", zap.Error(err))
-			cancelCtx(err)
-		}
-	}()
+	go a.runFanController(ctx, cancelCtx)
 
 	// Start event handler
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		log.FromContext(ctx).Info("Starting event handler")
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case event := <-a.eventChan:
-				err := a.handleEvent(ctx, event)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					log.FromContext(ctx).Error("Event handler failed", zap.Error(err))
-					cancelCtx(err)
-				}
-			}
-		}
-	}()
+	go a.runEventHandler(ctx, cancelCtx)
 
 	// Start gRPC API
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if len(a.config.Listen.Grpc) == 0 {
-			err := humane.New("no listen address provided",
-				"ensure you are passing a valid listen config to the grpc server",
-			)
-			log.FromContext(ctx).Error("no listen address provided, not starting gRPC server", humane.Zap(err)...)
-			cancelCtx(err)
-		}
+	go a.runGRpcApi(ctx, cancelCtx)
 
-		grpcListen, err := net.Listen(a.config.Listen.GrpcListenMode, a.config.Listen.Grpc)
-		if err != nil {
-			err := humane.Wrap(err, "failed to create grpc listener",
-				"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
-			)
-			log.FromContext(ctx).Error("failed to create grpc listener, not starting gRPC server", humane.Zap(err)...)
-			cancelCtx(err)
-		}
+	// wait till we're done
+	<-ctx.Done()
 
-		log.FromContext(ctx).Info("Starting grpc server", zap.String("address", a.config.Listen.Grpc))
-		if err := a.server.Serve(grpcListen); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			log.FromContext(ctx).Error("failed to start grpc server", humane.Zap(err)...)
-			cancelCtx(err)
-		}
-	}()
-
-	wg.Wait()
 	return ctx.Err()
 }
 
@@ -402,6 +298,7 @@ func (a *computeBladeAgentImpl) WaitForIdentifyConfirm(ctx context.Context, _ *e
 	return &emptypb.Empty{}, a.state.WaitForIdentifyConfirm(ctx)
 }
 
+// handleEvent processes an incoming event, updates state, and dispatches it to the appropriate handler based on the event type.
 func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event events.Event) error {
 	log.FromContext(ctx).Info("Handling event", zap.String("event", event.String()))
 	eventCounter.WithLabelValues(event.String()).Inc()
@@ -441,16 +338,21 @@ func (a *computeBladeAgentImpl) handleEvent(ctx context.Context, event events.Ev
 	return nil
 }
 
+// handleIdentifyActive is responsible for handling the identify event by setting a burst LED pattern based on the configuration.
 func (a *computeBladeAgentImpl) handleIdentifyActive(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify active")
 	return a.edgeLedEngine.SetPattern(ledengine.NewBurstPattern(led.Color{}, a.config.IdentifyLedColor))
 }
 
+// handleIdentifyConfirm handles the confirmation of an identify event by updating the LED engine with a static idle pattern.
 func (a *computeBladeAgentImpl) handleIdentifyConfirm(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify confirmed/cleared")
 	return a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor))
 }
 
+// handleCriticalActive handles the system's response to a critical state by adjusting fan speed and LED indications.
+// It sets the fan speed to 100%, disables stealth mode, and applies a critical LED pattern.
+// Returns any errors encountered during the process as a combined error.
 func (a *computeBladeAgentImpl) handleCriticalActive(ctx context.Context) error {
 	log.FromContext(ctx).Warn("Blade in critical state, setting fan speed to 100% and turning on LEDs")
 
@@ -468,6 +370,7 @@ func (a *computeBladeAgentImpl) handleCriticalActive(ctx context.Context) error 
 	return errors.Join(setStealthModeError, setPatternTopLedErr)
 }
 
+// handleCriticalReset handles the reset of a critical state by restoring default hardware settings for fans and LEDs.
 func (a *computeBladeAgentImpl) handleCriticalReset(ctx context.Context) error {
 	log.FromContext(ctx).Info("Critical state cleared, setting fan speed to default and restoring LEDs to default state")
 	// Reset fan controller overrides
@@ -486,36 +389,65 @@ func (a *computeBladeAgentImpl) handleCriticalReset(ctx context.Context) error {
 	return nil
 }
 
-// runTopLedEngine runs the top LED engine
-func (a *computeBladeAgentImpl) runTopLedEngine(ctx context.Context) error {
-	// FIXME the top LED is only used to indicate emergency situations
-	err := a.topLedEngine.SetPattern(ledengine.NewStaticPattern(led.Color{}))
-	if err != nil {
-		return err
+// runHal initializes and starts the HAL service within the given context, handling errors and supporting graceful cancellation.
+func (a *computeBladeAgentImpl) runHal(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting HAL")
+	if err := a.blade.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Error("HAL failed", zap.Error(err))
+		cancel(err)
 	}
-	return a.topLedEngine.Run(ctx)
+}
+
+// runTopLedEngine runs the top LED engine
+// FIXME the top LED is only used to indicate emergency situations
+func (a *computeBladeAgentImpl) runTopLedEngine(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting top LED engine")
+	if err := a.topLedEngine.SetPattern(ledengine.NewStaticPattern(led.Color{})); err != nil && !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Error("Top LED engine failed", zap.Error(err))
+		cancel(err)
+	}
+
+	if err := a.topLedEngine.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Error("Top LED engine failed", zap.Error(err))
+		cancel(err)
+	}
 }
 
 // runEdgeLedEngine runs the edge LED engine
-func (a *computeBladeAgentImpl) runEdgeLedEngine(ctx context.Context) error {
-	err := a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor))
-	if err != nil {
-		return err
+func (a *computeBladeAgentImpl) runEdgeLedEngine(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting edge LED engine")
+
+	if err := a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor)); err != nil && !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Error("Edge LED engine failed", zap.Error(err))
+		cancel(err)
 	}
-	return a.edgeLedEngine.Run(ctx)
+
+	if err := a.edgeLedEngine.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		log.FromContext(ctx).Error("Edge LED engine failed", zap.Error(err))
+		cancel(err)
+	}
 }
 
-func (a *computeBladeAgentImpl) runFanController(ctx context.Context) error {
+// runFanController initializes and manages a periodic task to control fan speed based on temperature readings.
+// The method uses a ticker to execute fan speed adjustments and handles context cancellation for cleanup.
+// If obtaining temperature or setting fan speed fails, appropriate error logs are recorded.
+func (a *computeBladeAgentImpl) runFanController(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting fan controller")
+
 	// Update fan speed periodically
 	ticker := time.NewTicker(5 * time.Second)
 
 	for {
-
 		// Wait for the next tick
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			return ctx.Err()
+
+			if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+				log.FromContext(ctx).Error("Fan Controller Failed", zap.Error(err))
+				cancel(err)
+			}
+			return
 		case <-ticker.C:
 		}
 
@@ -534,6 +466,76 @@ func (a *computeBladeAgentImpl) runFanController(ctx context.Context) error {
 	}
 }
 
+// runEdgeButtonHandler initializes and handles edge button press events in a loop until the context is canceled.
+// It waits for edge button presses and sends corresponding events to the event channel, logging errors and warnings.
+// If an unrecoverable error occurs, the cancel function is triggered to terminate the operation.
+func (a *computeBladeAgentImpl) runEdgeButtonHandler(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting edge button event handler")
+	for {
+		if err := a.blade.WaitForEdgeButtonPress(ctx); err != nil {
+			if !errors.Is(err, context.Canceled) {
+				log.FromContext(ctx).Error("Edge button event handler failed", zap.Error(err))
+				cancel(err)
+			}
+
+			return
+		}
+
+		select {
+		case a.eventChan <- events.Event(events.EdgeButtonEvent):
+		default:
+			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
+			droppedEventCounter.WithLabelValues(events.Event(events.EdgeButtonEvent).String()).Inc()
+		}
+	}
+}
+
+// runEventHandler processes events from the agent's event channel, handles them, and cancels on critical failure or context cancellation.
+func (a *computeBladeAgentImpl) runEventHandler(ctx context.Context, cancel context.CancelCauseFunc) {
+	log.FromContext(ctx).Info("Starting event handler")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case event := <-a.eventChan:
+			err := a.handleEvent(ctx, event)
+			if err != nil && !errors.Is(err, context.Canceled) {
+				log.FromContext(ctx).Error("Event handler failed", zap.Error(err))
+				cancel(err)
+			}
+		}
+	}
+}
+
+// runGRpcApi starts the gRPC server for the agent based on the configuration and gracefully handles errors or cancellation.
+func (a *computeBladeAgentImpl) runGRpcApi(ctx context.Context, cancel context.CancelCauseFunc) {
+	if len(a.config.Listen.Grpc) == 0 {
+		err := humane.New("no listen address provided",
+			"ensure you are passing a valid listen config to the grpc server",
+		)
+		log.FromContext(ctx).Error("no listen address provided, not starting gRPC server", humane.Zap(err)...)
+		cancel(err)
+	}
+
+	grpcListen, err := net.Listen(a.config.Listen.GrpcListenMode, a.config.Listen.Grpc)
+	if err != nil {
+		err := humane.Wrap(err, "failed to create grpc listener",
+			"ensure the gRPC server you are trying to serve to is not already running and the address is not bound by another process",
+		)
+		log.FromContext(ctx).Error("failed to create grpc listener, not starting gRPC server", humane.Zap(err)...)
+		cancel(err)
+	}
+
+	log.FromContext(ctx).Info("Starting grpc server", zap.String("address", a.config.Listen.Grpc))
+	if err := a.server.Serve(grpcListen); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		log.FromContext(ctx).Error("failed to start grpc server", humane.Zap(err)...)
+		cancel(err)
+	}
+}
+
+// fromProto converts a `bladeapiv1alpha1.Event` into a corresponding `events.Event` type.
+// Returns an error if the event type is invalid.
 func fromProto(event bladeapiv1alpha1.Event) (events.Event, error) {
 	switch event {
 	case bladeapiv1alpha1.Event_IDENTIFY:

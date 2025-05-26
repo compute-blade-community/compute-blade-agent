@@ -55,7 +55,7 @@ func (m *ComputeBladeHalMock) WaitForEdgeButtonPress(ctx context.Context) error 
 	return args.Error(0)
 }
 
-func (m *ComputeBladeHalMock) SetLed(idx uint, color led.Color) error {
+func (m *ComputeBladeHalMock) SetLed(idx LedIndex, color led.Color) error {
 	args := m.Called(idx, color)
 	return args.Error(0)
 }

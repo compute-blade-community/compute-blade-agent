@@ -8,7 +8,7 @@ import (
 // Options are the options for the LedEngine
 type Options struct {
 	// LedIdx is the index of the LED to control
-	LedIdx uint
+	LedIdx hal.LedIndex
 	// Hal is the computeblade hardware abstraction layer
 	Hal hal.ComputeBladeHal
 	// Clock is the clock used for timing

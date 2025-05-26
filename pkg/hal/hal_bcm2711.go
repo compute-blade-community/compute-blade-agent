@@ -410,7 +410,7 @@ func serializePwmDataFrame(data uint8) uint32 {
 	return result
 }
 
-func (bcm *bcm2711) SetLed(idx uint, color led.Color) error {
+func (bcm *bcm2711) SetLed(idx LedIndex, color led.Color) error {
 	if idx >= 2 {
 		return fmt.Errorf("invalid led index %d, supported: [0, 1]", idx)
 	}

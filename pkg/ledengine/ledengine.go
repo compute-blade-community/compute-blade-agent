@@ -20,7 +20,7 @@ type LedEngine interface {
 
 // ledEngineImpl is the implementation of the LedEngine interface
 type ledEngineImpl struct {
-	ledIdx  uint
+	ledIdx  hal.LedIndex
 	restart chan struct{}
 	pattern BlinkPattern
 	hal     hal.ComputeBladeHal
