@@ -101,6 +101,13 @@ func NewSlowBlinkPattern(baseColor led.Color, activeColor led.Color) BlinkPatter
 	}
 }
 
+func New(hal hal.ComputeBladeHal, ledIdx hal.LedIndex) LedEngine {
+	return NewLedEngine(Options{
+		Hal:    hal,
+		LedIdx: ledIdx,
+	})
+}
+
 func NewLedEngine(opts Options) LedEngine {
 	clock := opts.Clock
 	if clock == nil {
