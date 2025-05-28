@@ -64,7 +64,7 @@ func printStatusTable(bladeStatus []*bladeapiv1alpha1.StatusResponse) {
 			bladeNames[bladeIdx],
 			tempStyle(status.Temperature, status.CriticalTemperatureThreshold).Render(tempLabel(status.Temperature)),
 			speedOverrideStyle(status.FanSpeedAutomatic).Render(fanSpeedOverrideLabel(status.FanSpeedAutomatic, status.FanPercent)),
-			rpmStyle(status.FanRpm).Render(rpmLabel(status.FanRpm) + "(" + percentLabel(status.FanPercent) + ")"),
+			rpmStyle(status.FanRpm).Render(rpmLabel(status.FanRpm) + " (" + percentLabel(status.FanPercent) + ")"),
 			activeStyle(status.StealthMode).Render(activeLabel(status.StealthMode)),
 			activeStyle(status.IdentifyActive).Render(activeLabel(status.IdentifyActive)),
 			activeStyle(status.CriticalActive).Render(activeLabel(status.CriticalActive)),

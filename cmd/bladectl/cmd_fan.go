@@ -116,7 +116,7 @@ var (
 					rowPrefix = ""
 				}
 
-				fmt.Println(rowPrefix + rpmLabel(rpm) + percentLabel(percent))
+				fmt.Println(rpmStyle(rpm).Render(fmt.Sprint(rowPrefix + rpmLabel(rpm) + " (" + percentLabel(percent) + ")")))
 			}
 
 			return nil
