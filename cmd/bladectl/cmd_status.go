@@ -42,7 +42,7 @@ func printStatusTable(bladeStatus []*bladeapiv1alpha1.StatusResponse) {
 	// Header: Blade | Stat1 | Stat2 | ...
 	header := []string{
 		"Blade",
-		"SoC Temperature",
+		"Temperature",
 		"Fan Speed Override",
 		"Fan Speed",
 		"Stealth Mode",
