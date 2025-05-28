@@ -23,13 +23,24 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
-			}
+			clients := clientsFromContext(ctx)
 
-			fmt.Printf("%d°C\n", bladeStatus.Temperature)
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
+				}
+
+				temp := bladeStatus.Temperature
+				rowPrefix := bladeNames[idx]
+				if len(bladeNames) > 1 {
+					rowPrefix += ": "
+				} else {
+					rowPrefix = ""
+				}
+
+				fmt.Println(tempStyle(temp, bladeStatus.CriticalTemperatureThreshold).Render(rowPrefix + tempLabel(temp)))
+			}
 			return nil
 		},
 	}
@@ -41,18 +52,23 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
-			}
+			clients := clientsFromContext(ctx)
 
-			if bladeStatus.CriticalActive {
-				fmt.Println("Critical mode active")
-			} else {
-				fmt.Println("Not set")
-			}
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
+				}
 
+				rowPrefix := bladeNames[idx]
+				if len(bladeNames) > 1 {
+					rowPrefix += ": "
+				} else {
+					rowPrefix = ""
+				}
+
+				fmt.Println(activeStyle(bladeStatus.CriticalActive).Render(rowPrefix + activeLabel(bladeStatus.CriticalActive)))
+			}
 			return nil
 		},
 	}
@@ -65,13 +81,24 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
+			clients := clientsFromContext(ctx)
+
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
+				}
+
+				rowPrefix := bladeNames[idx]
+				if len(bladeNames) > 1 {
+					rowPrefix += ": "
+				} else {
+					rowPrefix = ""
+				}
+
+				fmt.Println(rowPrefix + hal.PowerStatus(bladeStatus.PowerStatus).String())
 			}
 
-			fmt.Println(hal.PowerStatus(bladeStatus.PowerStatus).String())
 			return nil
 		},
 	}

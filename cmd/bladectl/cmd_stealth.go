@@ -26,13 +26,15 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
+			for _, client := range clients {
+				_, err := client.SetStealthMode(ctx, &bladeapiv1alpha1.StealthModeRequest{Enable: !disable})
+				if err != nil {
+					return err
+				}
+			}
 
-			_, err := client.SetStealthMode(ctx, &bladeapiv1alpha1.StealthModeRequest{
-				Enable: !disable,
-			})
-
-			return err
+			return nil
 		},
 	}
 
@@ -43,13 +45,15 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
+			for _, client := range clients {
+				_, err := client.SetStealthMode(ctx, &bladeapiv1alpha1.StealthModeRequest{Enable: false})
+				if err != nil {
+					return err
+				}
+			}
 
-			_, err := client.SetStealthMode(ctx, &bladeapiv1alpha1.StealthModeRequest{
-				Enable: false,
-			})
-
-			return err
+			return nil
 		},
 	}
 
@@ -59,20 +63,23 @@ var (
 		Example: "bladectl get stealth",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
 
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
-			}
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
+				}
 
-			if bladeStatus.StealthMode {
-				fmt.Println("Stealth mode active")
-			} else {
-				fmt.Println("Not set")
+				rowPrefix := bladeNames[idx]
+				if len(bladeNames) > 1 {
+					rowPrefix += ": "
+				} else {
+					rowPrefix = ""
+				}
+
+				fmt.Println(activeStyle(bladeStatus.StealthMode).Render(rowPrefix, activeLabel(bladeStatus.StealthMode)))
 			}
 
 			return nil
