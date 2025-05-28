@@ -105,7 +105,7 @@ var (
 					rowPrefix = ""
 				}
 
-				fmt.Printf(rowPrefix + rpmLabel(rpm) + percentLabel(percent))
+				fmt.Println(rowPrefix + rpmLabel(rpm) + percentLabel(percent))
 			}
 
 			return nil

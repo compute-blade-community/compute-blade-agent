@@ -45,9 +45,11 @@ var rootCmd = &cobra.Command{
 		// load configuration
 		var bladectlCfg config.BladectlConfig
 		if err := viper.ReadInConfig(); err != nil {
+			cancelCtx(err)
 			return err
 		}
 		if err := viper.Unmarshal(&bladectlCfg); err != nil {
+			cancelCtx(err)
 			return err
 		}
 
@@ -83,11 +85,13 @@ var rootCmd = &cobra.Command{
 			var blade *config.Blade
 			blade, herr := bladectlCfg.FindBlade(bladeName)
 			if herr != nil {
+				cancelCtx(herr)
 				return errors.New(herr.Display())
 			}
 
 			client, herr := buildClient(blade)
 			if herr != nil {
+				cancelCtx(herr)
 				return errors.New(herr.Display())
 			}
 
