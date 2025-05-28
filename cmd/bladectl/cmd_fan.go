@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"sort"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 	bladeapiv1alpha1 "github.com/uptime-industries/compute-blade-agent/api/bladeapi/v1alpha1"
-	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -35,6 +37,10 @@ var (
 		Example: "bladectl set fan --percent 50",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(bladeNames) > 1 {
+				return fmt.Errorf("cannot set fan speed on multiple compute-blades at the same time")
+			}
+
 			var err error
 
 			ctx := cmd.Context()
@@ -59,6 +65,10 @@ var (
 		Example: "bladectl unset fan",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(bladeNames) > 1 {
+				return fmt.Errorf("cannot remove fan speed on multiple compute-blades at the same time")
+			}
+
 			ctx := cmd.Context()
 			client := clientFromContext(ctx)
 
@@ -75,18 +85,26 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
 
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
+				}
+
+				rpm := bladeStatus.FanRpm
+				percent := bladeStatus.FanPercent
+				rowPrefix := bladeNames[idx]
+				if len(bladeNames) > 1 {
+					rowPrefix += ": "
+				} else {
+					rowPrefix = ""
+				}
+
+				fmt.Printf(rowPrefix + rpmLabel(rpm) + percentLabel(percent))
 			}
 
-			if bladeStatus.FanSpeedAutomatic {
-				fmt.Printf("%d RPM (%d%%)\n", bladeStatus.FanRpm, bladeStatus.FanPercent)
-			} else {
-				fmt.Printf("%d RPM (Override: %d%%)\n", bladeStatus.FanRpm, bladeStatus.FanPercent)
-			}
 			return nil
 		},
 	}
@@ -99,27 +117,79 @@ var (
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
 
-			bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
-			if err != nil {
-				return err
-			}
-
-			values := make([]util.KeyValuePair, len(bladeStatus.FanCurveSteps))
-			for idx, step := range bladeStatus.FanCurveSteps {
-				values[idx] = util.KeyValuePair{
-					Key:    fmt.Sprintf("%d°C", step.Temperature),
-					Format: "%d%%",
-					Value:  []any{step.Percent},
-					Style: func([]any) lipgloss.Style {
-						return tempStyle(step.Temperature, bladeStatus.CriticalTemperatureThreshold)
-					},
+			bladeFanCurves := make([][]*bladeapiv1alpha1.FanCurveStep, len(clients))
+			criticalTemps := make([]int64, len(clients))
+			for idx, client := range clients {
+				bladeStatus, err := client.GetStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					return err
 				}
+
+				bladeFanCurves[idx] = bladeStatus.FanCurveSteps
+				criticalTemps[idx] = bladeStatus.CriticalTemperatureThreshold
 			}
 
-			fmt.Println(util.PrintKeyValues(values))
+			printFanCurveTable(bladeFanCurves, criticalTemps)
 			return nil
 		},
 	}
 )
+
+func printFanCurveTable(bladeValues [][]*bladeapiv1alpha1.FanCurveStep, criticalTemps []int64) {
+	bladeCount := len(bladeValues)
+
+	// Map blade index -> temperature -> step
+	bladeTempMap := make([]map[int64]*bladeapiv1alpha1.FanCurveStep, bladeCount)
+	allTempsSet := make(map[int64]struct{})
+
+	for bladeIdx, steps := range bladeValues {
+		bladeTempMap[bladeIdx] = make(map[int64]*bladeapiv1alpha1.FanCurveStep)
+		for _, step := range steps {
+			temp := step.Temperature
+			bladeTempMap[bladeIdx][temp] = step
+			allTempsSet[temp] = struct{}{}
+		}
+	}
+
+	// Sorted temperature list
+	var allTemps []int64
+	for t := range allTempsSet {
+		allTemps = append(allTemps, t)
+	}
+
+	sort.Slice(allTemps, func(i, j int) bool {
+		return allTemps[i] < allTemps[j]
+	})
+
+	// Header: Blade | Temp1 | Temp2 | ...
+	header := []string{"Blade"}
+	for _, t := range allTemps {
+		header = append(header, tempLabel(t))
+	}
+
+	// Table writer setup
+	tbl := tablewriter.NewTable(os.Stdout,
+		tablewriter.WithHeader(header),
+		tablewriter.WithHeaderAlignment(tw.AlignLeft),
+		tablewriter.WithHeaderAutoFormat(tw.Off),
+	)
+
+	// Rows: one per blade
+	for bladeIdx, tempMap := range bladeTempMap {
+		row := []string{bladeNames[bladeIdx]}
+		for _, t := range allTemps {
+			if step, ok := tempMap[t]; ok {
+				style := tempStyle(step.Temperature, criticalTemps[bladeIdx])
+				colored := style.Render(percentLabel(step.Percent))
+				row = append(row, colored)
+			} else {
+				row = append(row, "")
+			}
+		}
+		_ = tbl.Append(row)
+	}
+
+	_ = tbl.Render()
+}
