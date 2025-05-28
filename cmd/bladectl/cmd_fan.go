@@ -37,24 +37,26 @@ var (
 		Example: "bladectl set fan --percent 50",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(bladeNames) > 1 {
-				return fmt.Errorf("cannot set fan speed on multiple compute-blades at the same time")
-			}
-
-			var err error
-
 			ctx := cmd.Context()
-			client := clientFromContext(ctx)
+			clients := clientsFromContext(ctx)
 
-			if auto {
-				_, err = client.SetFanSpeedAuto(ctx, &emptypb.Empty{})
-			} else {
-				_, err = client.SetFanSpeed(ctx, &bladeapiv1alpha1.SetFanSpeedRequest{
-					Percent: int64(percent),
-				})
+			for _, client := range clients {
+				var err error
+
+				if auto {
+					_, err = client.SetFanSpeedAuto(ctx, &emptypb.Empty{})
+				} else {
+					_, err = client.SetFanSpeed(ctx, &bladeapiv1alpha1.SetFanSpeedRequest{
+						Percent: int64(percent),
+					})
+				}
+
+				if err != nil {
+					return err
+				}
 			}
 
-			return err
+			return nil
 		},
 	}
 
@@ -65,15 +67,16 @@ var (
 		Example: "bladectl unset fan",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(bladeNames) > 1 {
-				return fmt.Errorf("cannot remove fan speed on multiple compute-blades at the same time")
+			ctx := cmd.Context()
+			clients := clientsFromContext(ctx)
+
+			for _, client := range clients {
+				if _, err := client.SetFanSpeedAuto(ctx, &emptypb.Empty{}); err != nil {
+					return err
+				}
 			}
 
-			ctx := cmd.Context()
-			client := clientFromContext(ctx)
-
-			_, err := client.SetFanSpeedAuto(ctx, &emptypb.Empty{})
-			return err
+			return nil
 		},
 	}
 
