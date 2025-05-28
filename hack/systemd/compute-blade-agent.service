@@ -4,6 +4,7 @@ Documentation=https://github.com/uptime-industries/compute-blade-agent
 After=network.target
 
 [Service]
+User=root
 Restart=on-failure
 ExecStart=/usr/bin/compute-blade-agent
 TimeoutStopSec=20s
