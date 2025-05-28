@@ -27,11 +27,13 @@ import (
 )
 
 var (
+	allBlades  bool
 	bladeNames []string
 	timeout    time.Duration
 )
 
 func init() {
+	rootCmd.PersistentFlags().BoolVarP(&allBlades, "all", "a", false, "control all compute-blades at the same time")
 	rootCmd.PersistentFlags().StringArrayVar(&bladeNames, "blade", []string{""}, "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "timeout for gRPC requests")
 }
@@ -79,6 +81,14 @@ var rootCmd = &cobra.Command{
 				}
 			}
 		}()
+
+		// Allow to easily select all blades
+		if allBlades {
+			bladeNames = make([]string, len(bladectlCfg.Blades))
+			for idx, blade := range bladectlCfg.Blades {
+				bladeNames[idx] = blade.Name
+			}
+		}
 
 		clients := make([]bladeapiv1alpha1.BladeAgentServiceClient, len(bladeNames))
 		for idx, bladeName := range bladeNames {
