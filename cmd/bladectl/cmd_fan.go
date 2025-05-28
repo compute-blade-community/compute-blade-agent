@@ -37,6 +37,17 @@ var (
 		Example: "bladectl set fan --percent 50",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			autoSet := cmd.Flags().Changed("auto")
+			percentSet := cmd.Flags().Changed("percent")
+
+			if autoSet && percentSet {
+				return fmt.Errorf("only one of --auto or --percent can be specified")
+			}
+
+			if !autoSet && !percentSet {
+				return fmt.Errorf("you must specify either --auto or --percent")
+			}
+
 			ctx := cmd.Context()
 			clients := clientsFromContext(ctx)
 
