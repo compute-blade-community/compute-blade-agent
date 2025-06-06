@@ -1,0 +1,10 @@
+{
+  "bump-minor-pre-major": true,
+  "packages": {
+    ".": {
+      "bump-minor-pre-major": true,
+      "package-name": "compute-blade-agent",
+      "release-type": "simple"
+    }
+  }
+}

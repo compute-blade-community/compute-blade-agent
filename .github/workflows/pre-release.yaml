@@ -1,0 +1,26 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: write-all
+
+jobs:
+  # Release-please for auto-updated PRs
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required for release-please to work correctly
+
+      - uses: googleapis/release-please-action@v4
+        id: release-please
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: simple # actual releasing is handled by goreleaser
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
