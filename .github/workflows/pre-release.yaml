@@ -1,0 +1,22 @@
+name: Go Build - Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: write-all
+
+jobs:
+  # Release-please for auto-updated PRs
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release-please
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: simple # actual releasing is handled by goreleaser
+          config-file: .github/release-please-config.yaml
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
