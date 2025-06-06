@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.2...v0.9.0) (2025-06-06)
+
+Re-Release of [v0.7.0](#070-2025-05-11), [v0.8.0](#080-2025-05-24), [v0.8.1](#081-2025-05-24), and , [v0.8.2](#082-2025-05-24) in the [compute-blade-community](https://github.com/compute-blade-community) GitHub Org
+
+### ⚠ BREAKING CHANGES
+
+* **docker:** Docker Images are now available & published
+
+### Documentation
+
+* **release:** document release process ([feff766](https://github.com/compute-blade-community/compute-blade-agent/commit/feff7669a09f3a49305549916bb10ed0dfc7f977))
+
 ## [0.8.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.1...v0.8.2) (2025-05-24)
 
 ### Bug Fixes
