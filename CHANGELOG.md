@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.9.0...v0.9.1) (2025-06-06)
+
+
+### Bug Fixes
+
+* **systemd:** Add User to systemd service ([b022133](https://github.com/compute-blade-community/compute-blade-agent/commit/b02213386036ac29a0f1a733395c44a87b3c00e2))
+
 ## [0.9.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.2...v0.9.0) (2025-06-06)
 
 Re-Release of [v0.7.0](#070-2025-05-11), [v0.8.0](#080-2025-05-24), [v0.8.1](#081-2025-05-24), and , [v0.8.2](#082-2025-05-24) in the [compute-blade-community](https://github.com/compute-blade-community) GitHub Org
