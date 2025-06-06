@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.10.0...v0.11.0) (2025-06-06)
+
+
+### Features
+
+* **bladectl:** add server version information to output ([#100](https://github.com/compute-blade-community/compute-blade-agent/issues/100)) ([062e36e](https://github.com/compute-blade-community/compute-blade-agent/commit/062e36e33ad479677affa4773e620ca53be7e9fa))
+
 ## [0.10.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.9.1...v0.10.0) (2025-06-06)
 
 
