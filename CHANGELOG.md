@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.0.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.6.6...v1.0.0) (2025-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **go version:** Bump go version to 1.24 ([#58](https://github.com/compute-blade-community/compute-blade-agent/issues/58))
+* **agent:** add support for mTLS authentication in gRPC server ([#54](https://github.com/compute-blade-community/compute-blade-agent/issues/54))
+
+### Features
+
+* **agent:** add support for mTLS authentication in gRPC server ([#54](https://github.com/compute-blade-community/compute-blade-agent/issues/54)) ([70541d8](https://github.com/compute-blade-community/compute-blade-agent/commit/70541d86bad675a153daf8b5c80a92de204502ab))
+* **agent:** expose version, commit, and date information in logs for better tracking ([ec6229a](https://github.com/compute-blade-community/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* **bladectl:** implement command structure for managing compute-blade features ([ec6229a](https://github.com/compute-blade-community/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* **goreleaser:** add versioning information to builds for better traceability ([ec6229a](https://github.com/compute-blade-community/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+
+
+### Bug Fixes
+
+* **.gitignore:** add .idea directory to ignore list to prevent IDE files from being tracked ([ec6229a](https://github.com/compute-blade-community/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* auth to ghcr.io ([#63](https://github.com/compute-blade-community/compute-blade-agent/issues/63)) ([6faf63c](https://github.com/compute-blade-community/compute-blade-agent/commit/6faf63c76f5802540fbf4c677467f5681b87cdd3))
+* **bladectl:** improve error handling in identify command for better user feedback ([ec6229a](https://github.com/compute-blade-community/compute-blade-agent/commit/ec6229ad86b4eff06e40c805f8e4f216fe844c18))
+* set goreleaser version to v2.x ([#61](https://github.com/compute-blade-community/compute-blade-agent/issues/61)) ([790ea20](https://github.com/compute-blade-community/compute-blade-agent/commit/790ea2089ab170930d704132eec9b11aaf7fec40))
+
+
+### Miscellaneous Chores
+
+* **go version:** Bump go version to 1.24 ([#58](https://github.com/compute-blade-community/compute-blade-agent/issues/58)) ([ff6898f](https://github.com/compute-blade-community/compute-blade-agent/commit/ff6898f51467cc781b37f5e70b3d8ab198265948))
+
 ## [0.8.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.1...v0.8.2) (2025-05-24)
 
 ### Bug Fixes
