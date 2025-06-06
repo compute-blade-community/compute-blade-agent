@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 )
 
 // ComputeBladeAgent implements the core-logic of the agent. It is responsible for handling events and interfacing with the hardware.

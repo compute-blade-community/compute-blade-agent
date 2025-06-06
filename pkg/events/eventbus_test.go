@@ -3,8 +3,8 @@ package events_test
 import (
 	"testing"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 )
 
 func TestEventBusManySubscribers(t *testing.T) {

@@ -17,11 +17,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/cmd/bladectl/config"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/certificate"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/sierrasoftworks/humane-errors-go"
-	"github.com/uptime-industries/compute-blade-agent/cmd/bladectl/config"
-	"github.com/uptime-industries/compute-blade-agent/pkg/certificate"
-	"github.com/uptime-industries/compute-blade-agent/pkg/log"
-	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
@@ -90,7 +90,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 		if err := yaml.Unmarshal(configBytes, &bladectlConfig); err != nil {
 			return humane.Wrap(err, "failed to parse bladectl config",
 				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 				"ensure your config file is valid YAML",
 			)
 		}
@@ -104,7 +104,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 		if err != nil {
 			return humane.Wrap(err, "failed to decode client certificate data",
 				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 				"ensure your config file is valid YAML",
 			)
 		}
@@ -113,7 +113,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 		if err != nil {
 			return humane.Wrap(err, "failed to decode client certificate key data",
 				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 				"ensure your config file is valid YAML",
 			)
 		}
@@ -149,7 +149,7 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 	if err != nil {
 		return humane.Wrap(err, "Failed to marshal YAML config",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -198,7 +198,7 @@ func EnsureUnauthenticatedBladectlConfig(ctx context.Context, serverAddr string,
 	if err != nil {
 		return humane.Wrap(err, "Failed to marshal YAML config",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -229,7 +229,7 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 		if err != nil {
 			return tls.Certificate{}, nil, humane.Wrap(err, "failed to load existing server cert",
 				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 			)
 		}
 
@@ -278,7 +278,7 @@ func EnsureServerCertificate(ctx context.Context) (tls.Certificate, *x509.CertPo
 	if err != nil {
 		return tls.Certificate{}, nil, humane.Wrap(err, "failed to parse generated server certificate",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -322,7 +322,7 @@ func ensureCA(ctx context.Context) humane.Error {
 	if err != nil {
 		return humane.Wrap(err, "failed to create CA certificate",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -330,7 +330,7 @@ func ensureCA(ctx context.Context) humane.Error {
 	if err != nil {
 		return humane.Wrap(err, "failed to marshal CA private key",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 

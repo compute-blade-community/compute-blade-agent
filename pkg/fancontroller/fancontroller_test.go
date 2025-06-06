@@ -3,7 +3,7 @@ package fancontroller_test
 import (
 	"testing"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 )
 
 func TestFanControllerLinear_GetFanSpeed(t *testing.T) {

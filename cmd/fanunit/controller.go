@@ -8,11 +8,11 @@ import (
 
 	"machine"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/emc2101"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit/emc2101"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit/proto"
 	"golang.org/x/sync/errgroup"
 	"tinygo.org/x/drivers"
 	"tinygo.org/x/drivers/ws2812"

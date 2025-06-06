@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 	"go.uber.org/zap"
 )
 

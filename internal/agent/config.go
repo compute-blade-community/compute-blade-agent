@@ -1,10 +1,10 @@
 package agent
 
 import (
-	"github.com/uptime-industries/compute-blade-agent/internal/api"
-	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/internal/api"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
 )
 
 type LogConfiguration struct {

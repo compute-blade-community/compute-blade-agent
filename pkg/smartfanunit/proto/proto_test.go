@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit/proto"
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
 )
 
 func TestWritePacket(t *testing.T) {

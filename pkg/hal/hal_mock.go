@@ -3,8 +3,8 @@ package hal
 import (
 	"context"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
 	"github.com/stretchr/testify/mock"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
 )
 
 // fails if ComputeBladeHalMock does not implement ComputeBladeHal

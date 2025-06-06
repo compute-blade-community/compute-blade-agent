@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/agent"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
 )
 
 func TestNewComputeBladeState(t *testing.T) {

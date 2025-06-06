@@ -13,8 +13,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/sierrasoftworks/humane-errors-go"
-	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 )
 
 // LoadAndValidateCertificate loads and validates a certificate and its private key from the provided file paths.
@@ -107,7 +107,7 @@ func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []b
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to extract hostname",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -127,14 +127,14 @@ func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []b
 		if hostIps, err = util.GetHostIPs(); err != nil {
 			return nil, nil, humane.Wrap(err, "failed to extract server IPs",
 				"this should never happen",
-				"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 			)
 		}
 
 	default:
 		return nil, nil, humane.New(fmt.Sprintf("invalid certificate usage %s", options.Usage.String()),
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -155,7 +155,7 @@ func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []b
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to generate client key",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -172,7 +172,7 @@ func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []b
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to create client certificate",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -180,7 +180,7 @@ func GenerateCertificate(commonName string, opts ...Option) (certDER, keyDER []b
 	if err != nil {
 		return nil, nil, humane.Wrap(err, "failed to marshal client private key",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
@@ -227,7 +227,7 @@ func GetCertPoolFrom(caPath string) (pool *x509.CertPool, herr humane.Error) {
 	if !pool.AppendCertsFromPEM(caCert) {
 		return nil, humane.New("failed to append CA certificate to pool",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 			"Verify if the CA certificate is valid by run the following command:",
 			fmt.Sprintf("openssl x509 -in %s -text -noout", caPath),
 		)

@@ -79,7 +79,7 @@ func EnsureBladectlConfigHome() (string, humane.Error) {
 	if err != nil {
 		return "", humane.Wrap(err, "Failed to extract home directory",
 			"this should never happen",
-			"please report this as a bug to https://github.com/uptime-industries/compute-blade-agent/issues",
+			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 		)
 	}
 
