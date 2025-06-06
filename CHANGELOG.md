@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.2...v0.9.0) (2025-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** document release process
+
+### Documentation
+
+* **release:** document release process ([2afe125](https://github.com/compute-blade-community/compute-blade-agent/commit/2afe125e34b2ccbe8eab393b9d0070ca30cecc1b))
+
 ## [0.8.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.1...v0.8.2) (2025-05-24)
 
 ### Bug Fixes
