@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
@@ -30,15 +31,16 @@ func TestFanControllerLinear_GetFanSpeed(t *testing.T) {
 		{35, 60}, // Should use the maximum speed
 	}
 
+	assert.Equal(t, controller.Steps(), config.Steps)
+
 	for _, tc := range testCases {
 		expected := tc.expected
 		temperature := tc.temperature
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
 			speed := controller.GetFanSpeedPercent(temperature)
-			if speed != expected {
-				t.Errorf("For temperature %.2f, expected speed %d but got %d", temperature, expected, speed)
-			}
+			assert.Equal(t, expected, speed)
+			assert.True(t, controller.IsAutomaticSpeed(), "Expected fan speed to be automatic, but it was not")
 		})
 	}
 }
@@ -76,9 +78,8 @@ func TestFanControllerLinear_GetFanSpeedWithOverride(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
 			speed := controller.GetFanSpeedPercent(temperature)
-			if speed != expected {
-				t.Errorf("For temperature %.2f, expected speed %d but got %d", temperature, expected, speed)
-			}
+			assert.Equal(t, expected, speed)
+			assert.False(t, controller.IsAutomaticSpeed(), "Expected fan speed to be overridden, but it was not")
 		})
 	}
 }
@@ -127,11 +128,9 @@ func TestFanControllerLinear_ConstructionErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := fancontroller.NewLinearFanController(config)
-			if err == nil {
-				t.Errorf("Expected error with message '%s', but got no error", expectedErrMsg)
-			} else if err.Error() != expectedErrMsg {
-				t.Errorf("Expected error message '%s', but got '%s'", expectedErrMsg, err.Error())
-			}
+
+			assert.NotNil(t, err, "Expected error with message '%s', but got no error", expectedErrMsg)
+			assert.EqualError(t, err, expectedErrMsg)
 		})
 	}
 }

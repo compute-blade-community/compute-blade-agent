@@ -120,7 +120,7 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		return nil, err
 	}
 
-	steps := a.fanController.Config().Steps
+	steps := a.fanController.Steps()
 	fanCurveSteps := make([]*bladeapiv1alpha1.FanCurveStep, len(steps))
 	for idx, step := range steps {
 		fanCurveSteps[idx] = &bladeapiv1alpha1.FanCurveStep{

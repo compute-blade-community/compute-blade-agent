@@ -15,8 +15,9 @@ type FanController interface {
 	// IsAutomaticSpeed returns true if the FanSpeed is determined by the fan controller logic, or false if determined
 	// by an FanOverrideOpts
 	IsAutomaticSpeed() bool
-	// Config returns a copy of the FanController Config
-	Config() Config
+
+	// Steps returns the list of temperature and fan speed steps configured for the fan controller.
+	Steps() []Step
 }
 
 // FanController is a simple fan controller that reacts to temperature changes with a linear function
@@ -66,8 +67,8 @@ func NewLinearFanController(config Config) (FanController, humane.Error) {
 	}, nil
 }
 
-func (f *fanControllerLinear) Config() Config {
-	return f.config
+func (f *fanControllerLinear) Steps() []Step {
+	return f.config.Steps
 }
 
 func (f *fanControllerLinear) Override(opts *FanOverrideOpts) {

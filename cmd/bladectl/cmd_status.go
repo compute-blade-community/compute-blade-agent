@@ -5,7 +5,6 @@ import (
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
-	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
@@ -68,7 +67,7 @@ func printStatusTable(bladeStatus []*bladeapiv1alpha1.StatusResponse) {
 			activeStyle(status.StealthMode).Render(activeLabel(status.StealthMode)),
 			activeStyle(status.IdentifyActive).Render(activeLabel(status.IdentifyActive)),
 			activeStyle(status.CriticalActive).Render(activeLabel(status.CriticalActive)),
-			util.OkStyle().Render(hal.PowerStatus(status.PowerStatus).String()),
+			okStyle().Render(hal.PowerStatus(status.PowerStatus).String()),
 		}
 
 		_ = tbl.Append(row)
