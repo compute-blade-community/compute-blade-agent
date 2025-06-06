@@ -49,10 +49,11 @@ type computeBladeAgent struct {
 	fanController fancontroller.FanController
 	eventChan     chan events.Event
 	server        *grpc.Server
+	agentInfo     agent.ComputeBladeAgentInfo
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
-func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentConfig) (agent.ComputeBladeAgent, error) {
+func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentConfig, agentInfo agent.ComputeBladeAgentInfo) (agent.ComputeBladeAgent, error) {
 	blade, err := hal.NewCm4Hal(ctx, config.ComputeBladeHalOpts)
 	if err != nil {
 		return nil, err
@@ -71,6 +72,7 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 		fanController: fanController,
 		state:         agent.NewComputeBladeState(),
 		eventChan:     make(chan events.Event, 10),
+		agentInfo:     agentInfo,
 	}
 
 	if err := a.setupGrpcServer(ctx); err != nil {

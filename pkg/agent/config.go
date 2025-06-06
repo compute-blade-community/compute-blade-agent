@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"time"
+
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
@@ -50,4 +52,11 @@ type ComputeBladeAgentConfig struct {
 	FanControllerConfig fancontroller.Config `mapstructure:"fan_controller"`
 
 	ComputeBladeHalOpts hal.ComputeBladeHalOpts `mapstructure:"hal"`
+}
+
+// ComputeBladeAgentInfo represents metadata information about a compute blade agent, including version, commit, and build time.
+type ComputeBladeAgentInfo struct {
+	Version   string
+	Commit    string
+	BuildTime time.Time
 }

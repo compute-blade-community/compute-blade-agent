@@ -129,6 +129,12 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		}
 	}
 
+	versionInfo := &bladeapiv1alpha1.VersionInfo{
+		Version: a.agentInfo.Version,
+		Commit:  a.agentInfo.Commit,
+		Date:    a.agentInfo.BuildTime.Unix(),
+	}
+
 	return &bladeapiv1alpha1.StatusResponse{
 		StealthMode:                  a.blade.StealthModeActive(),
 		IdentifyActive:               a.state.IdentifyActive(),
@@ -140,6 +146,7 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		PowerStatus:                  bladeapiv1alpha1.PowerStatus(powerStatus),
 		FanCurveSteps:                fanCurveSteps,
 		CriticalTemperatureThreshold: int64(a.config.CriticalTemperatureThreshold),
+		Version:                      versionInfo,
 	}, nil
 }
 

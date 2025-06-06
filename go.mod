@@ -17,7 +17,6 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/warthog618/gpiod v0.8.1
 	go.bug.st/serial v1.6.4
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.15.0
 	google.golang.org/grpc v1.73.0

@@ -8,6 +8,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -27,6 +28,9 @@ import (
 var (
 	Version string
 	Commit  string
+	// Date is the CommitTimestamp when the build was done as UNIX Timestamp
+	Date      string
+	BuildTime time.Time
 )
 
 var debug = pflag.BoolP("debug", "v", false, "enable verbose logging")
@@ -59,7 +63,6 @@ func main() {
 	zapLogger := baseLogger.With(
 		zap.String("app", "compute-blade-agent"),
 		zap.String("version", Version),
-		zap.String("commit", Commit),
 	)
 	defer func() {
 		_ = zapLogger.Sync()
@@ -153,8 +156,28 @@ func main() {
 		}
 	}()
 
-	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit))
-	computebladeAgent, err := internal_agent.NewComputeBladeAgent(ctx, cbAgentConfig)
+	if Date != "" {
+		if unixTimestamp, err := strconv.ParseInt(Date, 10, 64); err == nil {
+			BuildTime = time.Unix(unixTimestamp, 0)
+		} else {
+			BuildTime = time.Unix(0, 0)
+			log.FromContext(context.Background()).WithError(err).Warn("Failed to parse build timestamp")
+		}
+	}
+
+	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent",
+		zap.String("version", Version),
+		zap.String("commit", Commit),
+		zap.String("date", BuildTime.Format(time.RFC3339)),
+	)
+
+	cbAgentInfo := agent.ComputeBladeAgentInfo{
+		Version:   Version,
+		Commit:    Commit,
+		BuildTime: BuildTime,
+	}
+	
+	computebladeAgent, err := internal_agent.NewComputeBladeAgent(ctx, cbAgentConfig, cbAgentInfo)
 	if err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).WithError(err).Fatal("Failed to create agent")

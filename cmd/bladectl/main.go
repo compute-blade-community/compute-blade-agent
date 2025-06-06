@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"strconv"
 	"strings"
+	"time"
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/spf13/viper"
@@ -17,9 +19,10 @@ const (
 )
 
 var (
-	Version string
-	Commit  string
-	Date    string
+	Version   string
+	Commit    string
+	Date      string
+	BuildTime time.Time
 )
 
 func clientIntoContext(ctx context.Context, client bladeapiv1alpha1.BladeAgentServiceClient) context.Context {
@@ -47,6 +50,14 @@ func clientsFromContext(ctx context.Context) []bladeapiv1alpha1.BladeAgentServic
 }
 
 func main() {
+	if Date != "" {
+		if unixTimestamp, err := strconv.ParseInt(Date, 10, 64); err == nil {
+			BuildTime = time.Unix(unixTimestamp, 0)
+		} else {
+			BuildTime = time.Unix(0, 0)
+		}
+	}
+
 	// Setup configuration
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()

@@ -42,6 +42,12 @@ message FanCurveStep {
   uint32 percent = 2;
 }
 
+message VersionInfo {
+  string version = 1;
+  string commit = 2;
+  int64 date = 3;
+}
+
 message StatusResponse {
   bool stealth_mode = 1;
   bool identify_active = 2;
@@ -53,6 +59,7 @@ message StatusResponse {
   bool fan_speed_automatic = 8;
   int64 critical_temperature_threshold = 9;
   repeated FanCurveStep fan_curve_steps = 10;
+  VersionInfo version = 11;
 }
 
 service BladeAgentService {
