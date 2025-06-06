@@ -176,7 +176,7 @@ func main() {
 		Commit:    Commit,
 		BuildTime: BuildTime,
 	}
-	
+
 	computebladeAgent, err := internal_agent.NewComputeBladeAgent(ctx, cbAgentConfig, cbAgentInfo)
 	if err != nil {
 		cancelCtx(err)
