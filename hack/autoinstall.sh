@@ -25,7 +25,7 @@ get_latest_release() {
     curl -s "https://api.github.com/repos/$repo/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
 }
 
-github_repo="uptime-industries/compute-blade-agent"
+github_repo="compute-blade-community/compute-blade-agent"
 package_suffix=$(detect_package_suffix)
 latest_release=$(get_latest_release "$github_repo")
 

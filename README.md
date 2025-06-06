@@ -7,7 +7,7 @@
 Install the agent with the one-liner below:
 
 ```bash
-curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/uptime-industries/compute-blade-agent/main/hack/autoinstall.sh
+curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/compute-blade-community/compute-blade-agent/main/hack/autoinstall.sh
 chmod +x /tmp/compute-blade-agent-installer.sh
 /tmp/compute-blade-agent-installer.sh
 ```
@@ -50,7 +50,7 @@ To install it, [download the `fanunit.uf2`](https://github.com/compute-blade-com
 Install the agent with the one-liner below:
 
 ```bash
-curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/uptime-industries/compute-blade-agent/main/hack/autoinstall.sh
+curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/compute-blade-community/compute-blade-agent/main/hack/autoinstall.sh
 chmod +x /tmp/compute-blade-agent-installer.sh
 /tmp/compute-blade-agent-installer.sh
 ```
