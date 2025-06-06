@@ -92,14 +92,15 @@ var rootCmd = &cobra.Command{
 
 		clients := make([]bladeapiv1alpha1.BladeAgentServiceClient, len(bladeNames))
 		for idx, bladeName := range bladeNames {
-			var blade *config.Blade
-			blade, herr := bladectlCfg.FindBlade(bladeName)
+			namedBlade, herr := bladectlCfg.FindBlade(bladeName)
 			if herr != nil {
 				cancelCtx(herr)
 				return errors.New(herr.Display())
 			}
 
-			client, herr := buildClient(blade)
+			bladeNames[idx] = namedBlade.Name
+
+			client, herr := buildClient(&namedBlade.Blade)
 			if herr != nil {
 				cancelCtx(herr)
 				return errors.New(herr.Display())

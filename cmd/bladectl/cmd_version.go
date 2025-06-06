@@ -50,7 +50,7 @@ var cmdVersion = &cobra.Command{
 
 				if status, err := client.GetStatus(ctx, &emptypb.Empty{}); err == nil && status.Version != nil {
 					_ = tbl.Append([]string{
-						fmt.Sprintf("blade-api: %s", bladeNames[idx]),
+						fmt.Sprintf("api: %s", bladeNames[idx]),
 						status.Version.Version,
 						status.Version.Commit,
 						time.Unix(status.Version.Date, 0).Format(time.RFC3339),

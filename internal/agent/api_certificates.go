@@ -100,18 +100,18 @@ func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, s
 			return herr
 		}
 
-		certPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientCertificateData)
+		certPEM, err := base64.StdEncoding.DecodeString(blade.Blade.Certificate.ClientCertificateData)
 		if err != nil {
-			return humane.Wrap(err, "failed to decode client certificate data",
+			return humane.Wrap(err, fmt.Sprintf("failed to decode client certificate data for blade %s", blade.Name),
 				"this should never happen",
 				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 				"ensure your config file is valid YAML",
 			)
 		}
 
-		keyPEM, err := base64.StdEncoding.DecodeString(blade.Certificate.ClientKeyData)
+		keyPEM, err := base64.StdEncoding.DecodeString(blade.Blade.Certificate.ClientKeyData)
 		if err != nil {
-			return humane.Wrap(err, "failed to decode client certificate key data",
+			return humane.Wrap(err, fmt.Sprintf("failed to decode client certificate key data for blade %s", blade.Name),
 				"this should never happen",
 				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
 				"ensure your config file is valid YAML",
