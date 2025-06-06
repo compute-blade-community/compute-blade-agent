@@ -42,7 +42,7 @@ jobs:
       - test
 
     steps:
-      - uses: googleapis/release-please-action@v3
+      - uses: googleapis/release-please-action@v4
         id: release-please
         with:
           release-type: simple # actual releasing is handled by goreleaser
