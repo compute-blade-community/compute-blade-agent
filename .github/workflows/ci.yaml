@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags-ignore:
-      - "*"
+      - "v*"
     branches-ignore:
       - main
 
@@ -82,8 +82,8 @@ jobs:
       - test
 
     permissions:
-      contents:      read
-      actions:       read  # to download code coverage results from "test" job
+      contents: read
+      actions: read # to download code coverage results from "test" job
       pull-requests: write # write permission needed to comment on PR
 
     steps:
@@ -115,7 +115,7 @@ jobs:
       # Setup tinygo
       - uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: '0.37.0'
+          tinygo-version: "0.37.0"
 
       # Build fanunit firmware
       - name: Build FanUnit Firmware
