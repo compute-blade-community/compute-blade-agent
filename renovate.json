@@ -15,5 +15,8 @@
       "automerge": true,
       "automergeType": "branch"
     }
+  ],
+  "ignoreDeps": [
+    "github.com/warthog618/gpiod"
   ]
 }
