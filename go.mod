@@ -1,4 +1,4 @@
-module github.com/uptime-industries/compute-blade-agent
+module github.com/compute-blade-community/compute-blade-agent
 
 go 1.24.0
 

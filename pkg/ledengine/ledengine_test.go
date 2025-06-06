@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/stretchr/testify/assert"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-industries/compute-blade-agent/pkg/ledengine"
-	"github.com/uptime-industries/compute-blade-agent/pkg/util"
 )
 
 func TestNewStaticPattern(t *testing.T) {

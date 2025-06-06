@@ -1,4 +1,4 @@
-name: Enforce PR title
+name: Pull Request Hygiene
 
 on:
   pull_request:
@@ -54,3 +54,24 @@ jobs:
         with:
           header: pr-title-lint-error
           delete: true
+
+  labeler:
+    name: "Add Labels to PR"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/labeler@v5
+        id: labeler
+        with:
+          sync-labels: true
+          dot: true
+
+      - shell: bash
+        name: Write step-summary
+        run: |
+          echo "All Labels: ${{ steps.labeler.outputs.all-labels }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "New Labels for this iteration: ${{ steps.labeler.outputs.new-labels }}" >> "$GITHUB_STEP_SUMMARY"

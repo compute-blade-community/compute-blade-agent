@@ -8,8 +8,8 @@ import (
 
 	"machine"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/emc2101"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit/emc2101"
 	"tinygo.org/x/drivers/ws2812"
 )
 

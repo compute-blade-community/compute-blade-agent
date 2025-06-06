@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
 	"go.uber.org/zap"
 )
 

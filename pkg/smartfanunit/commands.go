@@ -3,8 +3,8 @@ package smartfanunit
 import (
 	"errors"
 
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-industries/compute-blade-agent/pkg/smartfanunit/proto"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/smartfanunit/proto"
 )
 
 // Blade -> FanUnit communication

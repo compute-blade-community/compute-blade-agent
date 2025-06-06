@@ -1,8 +1,8 @@
 package ledengine
 
 import (
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-industries/compute-blade-agent/pkg/util"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 )
 
 // Options are the options for the LedEngine

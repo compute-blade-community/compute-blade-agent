@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/internal/agent"
+	"github.com/compute-blade-community/compute-blade-agent/internal/api"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/uptime-industries/compute-blade-agent/internal/agent"
-	"github.com/uptime-industries/compute-blade-agent/internal/api"
-	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
 

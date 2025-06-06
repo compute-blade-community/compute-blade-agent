@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/uptime-industries/compute-blade-agent/pkg/agent"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/agent"
 	"go.uber.org/zap"
 )
 

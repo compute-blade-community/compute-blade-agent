@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
+	agent2 "github.com/compute-blade-community/compute-blade-agent/pkg/agent"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	agent2 "github.com/uptime-industries/compute-blade-agent/pkg/agent"
-	"github.com/uptime-industries/compute-blade-agent/pkg/events"
-	"github.com/uptime-industries/compute-blade-agent/pkg/fancontroller"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal"
-	"github.com/uptime-industries/compute-blade-agent/pkg/hal/led"
-	"github.com/uptime-industries/compute-blade-agent/pkg/ledengine"
-	"github.com/uptime-industries/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
 
