@@ -1,0 +1,36 @@
+name: Create Release Tag
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".release-please-manifest.json"
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Read version from manifest
+        id: get_version
+        run: |
+          version=$(jq -r '."." | .version' .release-please-manifest.json)
+          echo "version=${version}" >> $GITHUB_OUTPUT
+
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag ${{ steps.get_version.outputs.version }}
+          git push --tags
