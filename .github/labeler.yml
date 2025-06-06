@@ -1,0 +1,70 @@
+# API-related files
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'api/**'
+          - 'internal/api/**'
+          - 'pkg/certificate/**'
+          - 'buf.*'
+
+# CLI-related files
+cli:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'api/**'
+          - 'cmd/bladectl/**'
+
+# Agent
+agent:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'api/**'
+          - 'cmd/agent/**'
+          - 'internal/agent/**'
+          - 'pkg/agent/**'
+          - 'pkg/events/**'
+
+# Firmware-related files
+firmware:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'cmd/fanunit/**'
+          - 'pkg/smartfanunit/**'
+
+# Hardware-specific packages
+hardware:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'pkg/fancontroller/**'
+          - 'pkg/hal/**'
+          - 'pkg/ledengine/**'
+
+# Utilities
+util:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'pkg/util/**'
+          - 'pkg/log/**'
+
+# Documentation (Markdown files or docs folders — optional here, kept for completeness)
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+
+# Build system files
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'Makefile'
+
+# Add 'enhancement' label to any PR where the head branch name starts with `feature`
+enhancement:
+  - head-branch:
+    - '^feature'
+
+# Add 'bug' label to any PR where the head branch name starts with `feature`
+bug:
+  - head-branch:
+      - '^bug'
+      - '^fix'
