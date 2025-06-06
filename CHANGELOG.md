@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.9.0...v0.10.0) (2025-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** automate and document the release process better
+
+### Miscellaneous Chores
+
+* **release:** automate and document the release process better ([bcf7da0](https://github.com/compute-blade-community/compute-blade-agent/commit/bcf7da0a99fdbaa4232868aa81d586d7fc9a97af))
+
 ## [0.9.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.2...v0.9.0) (2025-06-06)
 
 
