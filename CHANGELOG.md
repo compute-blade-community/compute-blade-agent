@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.9.1...v0.10.0) (2025-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **bladectl:** add more bladectl commands ([#91](https://github.com/compute-blade-community/compute-blade-agent/issues/91))
+
+### Features
+
+* **bladectl:** add more bladectl commands ([#91](https://github.com/compute-blade-community/compute-blade-agent/issues/91)) ([781ded8](https://github.com/compute-blade-community/compute-blade-agent/commit/781ded8e43d7115b334580a6ff18c2ab054e22cc))
+* **OpenTelemetry:** Integrate OpenTelemetry into agent ([#90](https://github.com/compute-blade-community/compute-blade-agent/issues/90)) ([7ec49ce](https://github.com/compute-blade-community/compute-blade-agent/commit/7ec49ce05ce4d428e5ee94858c01004cc1a2e40d))
+
 ## [0.9.1](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.9.0...v0.9.1) (2025-06-06)
 
 
