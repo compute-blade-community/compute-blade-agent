@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.2...v0.9.0) (2025-06-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** Separate pre-release from release workflow ([#73](https://github.com/compute-blade-community/compute-blade-agent/issues/73))
+
+### Miscellaneous Chores
+
+* **release:** Separate pre-release from release workflow ([#73](https://github.com/compute-blade-community/compute-blade-agent/issues/73)) ([104f709](https://github.com/compute-blade-community/compute-blade-agent/commit/104f709337276b91fb56f39b2ed0f562954c67e8))
+
 ## [0.8.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.8.1...v0.8.2) (2025-05-24)
 
 ### Bug Fixes
