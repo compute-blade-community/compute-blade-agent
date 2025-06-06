@@ -1,0 +1,22 @@
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+
+permissions: write-all
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: googleapis/release-please-action@v4
+        id: release-please
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
