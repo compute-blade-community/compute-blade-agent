@@ -131,8 +131,8 @@ func Test_LedEngine_SetPattern_WhileRunning(t *testing.T) {
 	clk.On("After", time.Hour).Times(2).Return(clkAfterChan)
 
 	cbMock := hal.ComputeBladeHalMock{}
-	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
-	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
 
 	opts := ledengine.Options{
 		Hal:    &cbMock,
@@ -178,7 +178,7 @@ func Test_LedEngine_SetPattern_BeforeRun(t *testing.T) {
 	clk.On("After", time.Hour).Once().Return(clkAfterChan)
 
 	cbMock := hal.ComputeBladeHalMock{}
-	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
 
 	opts := ledengine.Options{
 		Hal:    &cbMock,
@@ -220,8 +220,8 @@ func Test_LedEngine_SetPattern_SetLedFailureInPattern(t *testing.T) {
 	clk.On("After", time.Hour).Once().Return(clkAfterChan)
 
 	cbMock := hal.ComputeBladeHalMock{}
-	call0 := cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
-	cbMock.On("SetLed", uint(0), led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(errors.New("failure")).NotBefore(call0)
+	call0 := cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(errors.New("failure")).NotBefore(call0)
 
 	opts := ledengine.Options{
 		Hal:    &cbMock,

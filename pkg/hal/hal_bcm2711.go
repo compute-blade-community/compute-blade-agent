@@ -386,6 +386,14 @@ func (bcm *bcm2711) SetStealthMode(enable bool) error {
 	}
 }
 
+func (bcm *bcm2711) StealthModeActive() bool {
+	val, err := bcm.stealthModeLine.Value()
+	if err != nil {
+		return false
+	}
+	return val > 0
+}
+
 // serializePwmDataFrame converts a byte to a 24 bit PWM data frame for WS281x LEDs
 func serializePwmDataFrame(data uint8) uint32 {
 	var result uint32 = 0
@@ -402,7 +410,7 @@ func serializePwmDataFrame(data uint8) uint32 {
 	return result
 }
 
-func (bcm *bcm2711) SetLed(idx uint, color led.Color) error {
+func (bcm *bcm2711) SetLed(idx LedIndex, color led.Color) error {
 	if idx >= 2 {
 		return fmt.Errorf("invalid led index %d, supported: [0, 1]", idx)
 	}

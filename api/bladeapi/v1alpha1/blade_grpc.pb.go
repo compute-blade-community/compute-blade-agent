@@ -23,6 +23,7 @@ const (
 	BladeAgentService_EmitEvent_FullMethodName              = "/api.bladeapi.v1alpha1.BladeAgentService/EmitEvent"
 	BladeAgentService_WaitForIdentifyConfirm_FullMethodName = "/api.bladeapi.v1alpha1.BladeAgentService/WaitForIdentifyConfirm"
 	BladeAgentService_SetFanSpeed_FullMethodName            = "/api.bladeapi.v1alpha1.BladeAgentService/SetFanSpeed"
+	BladeAgentService_SetFanSpeedAuto_FullMethodName        = "/api.bladeapi.v1alpha1.BladeAgentService/SetFanSpeedAuto"
 	BladeAgentService_SetStealthMode_FullMethodName         = "/api.bladeapi.v1alpha1.BladeAgentService/SetStealthMode"
 	BladeAgentService_GetStatus_FullMethodName              = "/api.bladeapi.v1alpha1.BladeAgentService/GetStatus"
 )
@@ -35,8 +36,15 @@ type BladeAgentServiceClient interface {
 	EmitEvent(ctx context.Context, in *EmitEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// WaitForIdentifyConfirm blocks until the blades button is pressed
 	WaitForIdentifyConfirm(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Sets the fan speed to a specific value.
 	SetFanSpeed(ctx context.Context, in *SetFanSpeedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Sets the fan speed to automatic mode.
+	//
+	// Internally, this is equivalent to calling SetFanSpeed with a nil/empty value.
+	SetFanSpeedAuto(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Sets the blade to stealth mode (disables all LEDs)
 	SetStealthMode(ctx context.Context, in *StealthModeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Gets the current status of the blade
 	GetStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 }
 
@@ -75,6 +83,15 @@ func (c *bladeAgentServiceClient) SetFanSpeed(ctx context.Context, in *SetFanSpe
 	return out, nil
 }
 
+func (c *bladeAgentServiceClient) SetFanSpeedAuto(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, BladeAgentService_SetFanSpeedAuto_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *bladeAgentServiceClient) SetStealthMode(ctx context.Context, in *StealthModeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, BladeAgentService_SetStealthMode_FullMethodName, in, out, opts...)
@@ -101,8 +118,15 @@ type BladeAgentServiceServer interface {
 	EmitEvent(context.Context, *EmitEventRequest) (*emptypb.Empty, error)
 	// WaitForIdentifyConfirm blocks until the blades button is pressed
 	WaitForIdentifyConfirm(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// Sets the fan speed to a specific value.
 	SetFanSpeed(context.Context, *SetFanSpeedRequest) (*emptypb.Empty, error)
+	// Sets the fan speed to automatic mode.
+	//
+	// Internally, this is equivalent to calling SetFanSpeed with a nil/empty value.
+	SetFanSpeedAuto(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// Sets the blade to stealth mode (disables all LEDs)
 	SetStealthMode(context.Context, *StealthModeRequest) (*emptypb.Empty, error)
+	// Gets the current status of the blade
 	GetStatus(context.Context, *emptypb.Empty) (*StatusResponse, error)
 	mustEmbedUnimplementedBladeAgentServiceServer()
 }
@@ -119,6 +143,9 @@ func (UnimplementedBladeAgentServiceServer) WaitForIdentifyConfirm(context.Conte
 }
 func (UnimplementedBladeAgentServiceServer) SetFanSpeed(context.Context, *SetFanSpeedRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetFanSpeed not implemented")
+}
+func (UnimplementedBladeAgentServiceServer) SetFanSpeedAuto(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetFanSpeedAuto not implemented")
 }
 func (UnimplementedBladeAgentServiceServer) SetStealthMode(context.Context, *StealthModeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetStealthMode not implemented")
@@ -193,6 +220,24 @@ func _BladeAgentService_SetFanSpeed_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BladeAgentService_SetFanSpeedAuto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BladeAgentServiceServer).SetFanSpeedAuto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BladeAgentService_SetFanSpeedAuto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BladeAgentServiceServer).SetFanSpeedAuto(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BladeAgentService_SetStealthMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StealthModeRequest)
 	if err := dec(in); err != nil {
@@ -247,6 +292,10 @@ var BladeAgentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetFanSpeed",
 			Handler:    _BladeAgentService_SetFanSpeed_Handler,
+		},
+		{
+			MethodName: "SetFanSpeedAuto",
+			Handler:    _BladeAgentService_SetFanSpeedAuto_Handler,
 		},
 		{
 			MethodName: "SetStealthMode",

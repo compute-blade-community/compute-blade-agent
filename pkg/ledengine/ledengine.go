@@ -20,7 +20,7 @@ type LedEngine interface {
 
 // ledEngineImpl is the implementation of the LedEngine interface
 type ledEngineImpl struct {
-	ledIdx  uint
+	ledIdx  hal.LedIndex
 	restart chan struct{}
 	pattern BlinkPattern
 	hal     hal.ComputeBladeHal
@@ -99,6 +99,13 @@ func NewSlowBlinkPattern(baseColor led.Color, activeColor led.Color) BlinkPatter
 			time.Second, // 1s on
 		},
 	}
+}
+
+func New(hal hal.ComputeBladeHal, ledIdx hal.LedIndex) LedEngine {
+	return NewLedEngine(Options{
+		Hal:    hal,
+		LedIdx: ledIdx,
+	})
 }
 
 func NewLedEngine(opts Options) LedEngine {

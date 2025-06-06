@@ -32,8 +32,10 @@ const (
 	PowerPoe802at
 )
 
+type LedIndex uint8
+
 const (
-	LedTop = iota
+	LedTop LedIndex = iota
 	LedEdge
 )
 
@@ -53,8 +55,10 @@ type ComputeBladeHal interface {
 	GetFanRPM() (float64, error)
 	// SetStealthMode enables/disables stealth mode of the blade (turning on/off the LEDs)
 	SetStealthMode(enabled bool) error
+	// StealthModeActive returns if stealth mode of the blade is currently active
+	StealthModeActive() bool
 	// SetLed sets the color of the LEDs
-	SetLed(idx uint, color led.Color) error
+	SetLed(idx LedIndex, color led.Color) error
 	// GetPowerStatus returns the current power status of the blade
 	GetPowerStatus() (PowerStatus, error)
 	// GetTemperature returns the current temperature of the SoC in °C
@@ -65,7 +69,6 @@ type ComputeBladeHal interface {
 
 // FanUnit abstracts the fan unit
 type FanUnit interface {
-
 	// Kind returns the kind of the fan FanUnit
 	Kind() FanUnitKind
 

@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"github.com/compute-blade-community/compute-blade-agent/internal/api"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
@@ -11,12 +10,19 @@ type LogConfiguration struct {
 	Mode string `mapstructure:"mode"`
 }
 
+type ApiConfig struct {
+	Metrics           string `mapstructure:"metrics"`
+	Grpc              string `mapstructure:"grpc"`
+	GrpcAuthenticated bool   `mapstructure:"authenticated"`
+	GrpcListenMode    string `mapstructure:"mode"`
+}
+
 type ComputeBladeAgentConfig struct {
 	// Log is the logging configuration
 	Log LogConfiguration `mapstructure:"log"`
 
 	// Listen is the listen configuration for the server
-	Listen api.Config `mapstructure:"listen"`
+	Listen ApiConfig `mapstructure:"listen"`
 
 	// Hal is the hardware abstraction layer configuration
 	Hal hal.Config `mapstructure:"hal"`

@@ -6,10 +6,8 @@ import (
 	"context"
 	"math"
 
-	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
-	"go.uber.org/zap"
-
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/warthog618/gpiod"
 	"github.com/warthog618/gpiod/device/rpi"
 )
@@ -50,7 +48,7 @@ func (fu standardFanUnitBcm2711) Run(ctx context.Context) error {
 		defer func(fanEdgeLine *gpiod.Line) {
 			err := fanEdgeLine.Close()
 			if err != nil {
-				log.FromContext(ctx).Error("failed to close fanEdgeLine", zap.Error(err))
+				log.FromContext(ctx).WithError(err).Error("failed to close fanEdgeLine")
 			}
 		}(fu.fanEdgeLine)
 	}

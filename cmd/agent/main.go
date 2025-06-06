@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/compute-blade-community/compute-blade-agent/internal/agent"
-	"github.com/compute-blade-community/compute-blade-agent/internal/api"
+	internal_agent "github.com/compute-blade-community/compute-blade-agent/internal/agent"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/agent"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spechtlabs/go-otel-utils/otelprovider"
@@ -153,8 +153,8 @@ func main() {
 		}
 	}()
 
-	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent")
-	computebladeAgent, err := agent.NewComputeBladeAgent(ctx, cbAgentConfig)
+	log.FromContext(ctx).Info("Bootstrapping compute-blade-agent", zap.String("version", Version), zap.String("commit", Commit))
+	computebladeAgent, err := internal_agent.NewComputeBladeAgent(ctx, cbAgentConfig)
 	if err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).WithError(err).Fatal("Failed to create agent")
@@ -162,17 +162,6 @@ func main() {
 
 	// Run agent
 	computebladeAgent.RunAsync(ctx, cancelCtx)
-
-	// Setup GRPC server
-	grpcServer := api.NewGrpcApiServer(ctx,
-		api.WithComputeBladeAgent(computebladeAgent),
-		api.WithAuthentication(cbAgentConfig.Listen.GrpcAuthenticated),
-		api.WithListenAddr(cbAgentConfig.Listen.Grpc),
-		api.WithListenMode(cbAgentConfig.Listen.GrpcListenMode),
-	)
-
-	// Run gRPC API
-	grpcServer.ServeAsync(ctx, cancelCtx)
 
 	// setup prometheus endpoint
 	promServer := runPrometheusEndpoint(ctx, cancelCtx, &cbAgentConfig.Listen)
@@ -190,8 +179,11 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		otelzap.L().Info("Shutting down grpc server")
-		grpcServer.GracefulStop()
+
+		log.FromContext(ctx).Info("Shutting down compute blade agent...")
+		if err := computebladeAgent.GracefulStop(ctx); err != nil {
+			log.FromContext(ctx).WithError(err).Error("Failed to close compute blade agent")
+		}
 	}()
 
 	// Shut-Down Prometheus Endpoint
@@ -218,7 +210,7 @@ func main() {
 	}
 }
 
-func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *api.Config) *http.Server {
+func runPrometheusEndpoint(ctx context.Context, cancel context.CancelCauseFunc, apiConfig *agent.ApiConfig) *http.Server {
 	instrumentationHandler := http.NewServeMux()
 	instrumentationHandler.Handle("/metrics", promhttp.Handler())
 	instrumentationHandler.HandleFunc("/debug/pprof/", pprof.Index)

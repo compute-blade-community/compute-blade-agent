@@ -27,12 +27,14 @@ import (
 )
 
 var (
-	bladeName string
-	timeout   time.Duration
+	allBlades  bool
+	bladeNames []string
+	timeout    time.Duration
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&bladeName, "blade", "", "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
+	rootCmd.PersistentFlags().BoolVarP(&allBlades, "all", "a", false, "control all compute-blades at the same time")
+	rootCmd.PersistentFlags().StringArrayVar(&bladeNames, "blade", []string{""}, "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "timeout for gRPC requests")
 }
 
@@ -40,30 +42,20 @@ var rootCmd = &cobra.Command{
 	Use:   "bladectl",
 	Short: "bladectl interacts with the compute-blade-agent and allows you to manage hardware-features of your compute blade(s)",
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		origCtx := cmd.Context()
-
-		// Load potential file configs
-		if err := viper.ReadInConfig(); err != nil {
-			return err
-		}
+		ctx, cancelCtx := context.WithCancelCause(cmd.Context())
 
 		// load configuration
 		var bladectlCfg config.BladectlConfig
+		if err := viper.ReadInConfig(); err != nil {
+			cancelCtx(err)
+			return err
+		}
 		if err := viper.Unmarshal(&bladectlCfg); err != nil {
+			cancelCtx(err)
 			return err
 		}
 
-		var blade *config.Blade
-
-		blade, herr := bladectlCfg.FindBlade(bladeName)
-		if herr != nil {
-			return errors.New(herr.Display())
-		}
-
 		// setup signal handlers for SIGINT and SIGTERM
-		ctx, cancelCtx := context.WithTimeout(origCtx, timeout)
-
-		// setup signal handler channels
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		go func() {
@@ -73,6 +65,8 @@ var rootCmd = &cobra.Command{
 
 			// Wait for signal
 			case sig := <-sigs:
+				fmt.Println("Received signal", sig.String())
+
 				switch sig {
 				case syscall.SIGTERM:
 					fallthrough
@@ -80,7 +74,7 @@ var rootCmd = &cobra.Command{
 					fallthrough
 				case syscall.SIGQUIT:
 					// On terminate signal, cancel context causing the program to terminate
-					cancelCtx()
+					cancelCtx(context.Canceled)
 
 				default:
 					log.FromContext(ctx).Warn("Received unknown signal", zap.String("signal", sig.String()))
@@ -88,69 +82,66 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		// Create our gRPC Transport Credentials
-		credentials := insecure.NewCredentials()
-		certData := blade.Certificate
-
-		// If we're presented with certificate data in the config, we try to create a mTLS connection
-		if len(certData.ClientCertificateData) > 0 && len(certData.ClientKeyData) > 0 && len(certData.CertificateAuthorityData) > 0 {
-			var err error
-
-			serverName := blade.Server
-			if strings.Contains(serverName, ":") {
-				if serverName, _, err = net.SplitHostPort(blade.Server); err != nil {
-					return fmt.Errorf("failed to parse server address: %w", err)
-				}
-			}
-
-			if credentials, err = loadTlsCredentials(serverName, certData); err != nil {
-				return err
+		// Allow to easily select all blades
+		if allBlades {
+			bladeNames = make([]string, len(bladectlCfg.Blades))
+			for idx, blade := range bladectlCfg.Blades {
+				bladeNames[idx] = blade.Name
 			}
 		}
 
-		conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(credentials))
-		if err != nil {
-			return errors.New(
-				humane.Wrap(err,
-					"failed to dial grpc server",
-					"ensure the gRPC server you are trying to connect to is running and the address is correct",
-				).Display(),
-			)
+		clients := make([]bladeapiv1alpha1.BladeAgentServiceClient, len(bladeNames))
+		for idx, bladeName := range bladeNames {
+			var blade *config.Blade
+			blade, herr := bladectlCfg.FindBlade(bladeName)
+			if herr != nil {
+				cancelCtx(herr)
+				return errors.New(herr.Display())
+			}
+
+			client, herr := buildClient(blade)
+			if herr != nil {
+				cancelCtx(herr)
+				return errors.New(herr.Display())
+			}
+
+			clients[idx] = client
 		}
 
-		client := bladeapiv1alpha1.NewBladeAgentServiceClient(conn)
-		cmd.SetContext(clientIntoContext(ctx, client))
+		ctx = clientIntoContext(ctx, clients[0]) // Add the default client
+		ctx = clientsIntoContext(ctx, clients)   // Add all clients
+		cmd.SetContext(ctx)
 		return nil
 	},
 }
 
-func loadTlsCredentials(server string, certData config.Certificate) (credentials.TransportCredentials, error) {
+func loadTlsCredentials(server string, certData config.Certificate) (credentials.TransportCredentials, humane.Error) {
 	// Decode base64 certificate, key, and CA
 	certPEM, err := base64.StdEncoding.DecodeString(certData.ClientCertificateData)
 	if err != nil {
-		return nil, fmt.Errorf("invalid base64 client cert: %w", err)
+		return nil, humane.Wrap(err, "invalid base64 client cert")
 	}
 
 	keyPEM, err := base64.StdEncoding.DecodeString(certData.ClientKeyData)
 	if err != nil {
-		return nil, fmt.Errorf("invalid base64 client key: %w", err)
+		return nil, humane.Wrap(err, "invalid base64 client key")
 	}
 
 	caPEM, err := base64.StdEncoding.DecodeString(certData.CertificateAuthorityData)
 	if err != nil {
-		return nil, fmt.Errorf("invalid base64 CA cert: %w", err)
+		return nil, humane.Wrap(err, "invalid base64 CA cert")
 	}
 
 	// Load client cert/key pair
 	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse client cert/key pair: %w", err)
+		return nil, humane.Wrap(err, "failed to parse client cert/key pair")
 	}
 
 	// Load CA into CertPool
 	caPool := x509.NewCertPool()
 	if !caPool.AppendCertsFromPEM(caPEM) {
-		return nil, fmt.Errorf("failed to append CA certificate")
+		return nil, humane.Wrap(err, "failed to append CA certificate")
 	}
 
 	tlsConfig := &tls.Config{
@@ -160,4 +151,36 @@ func loadTlsCredentials(server string, certData config.Certificate) (credentials
 	}
 
 	return credentials.NewTLS(tlsConfig), nil
+}
+
+func buildClient(blade *config.Blade) (bladeapiv1alpha1.BladeAgentServiceClient, humane.Error) {
+	// Create our gRPC Transport Credentials
+	creds := insecure.NewCredentials()
+	certData := blade.Certificate
+
+	// If we're presented with certificate data in the config, we try to create a mTLS connection
+	if len(certData.ClientCertificateData) > 0 && len(certData.ClientKeyData) > 0 && len(certData.CertificateAuthorityData) > 0 {
+		serverName := blade.Server
+		if strings.Contains(serverName, ":") {
+			var err error
+			if serverName, _, err = net.SplitHostPort(blade.Server); err != nil {
+				return nil, humane.Wrap(err, "failed to parse server address")
+			}
+		}
+
+		var err humane.Error
+		if creds, err = loadTlsCredentials(serverName, certData); err != nil {
+			return nil, err
+		}
+	}
+
+	conn, err := grpc.NewClient(blade.Server, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return nil, humane.Wrap(err,
+			"failed to dial grpc server",
+			"ensure the gRPC server you are trying to connect to is running and the address is correct",
+		)
+	}
+
+	return bladeapiv1alpha1.NewBladeAgentServiceClient(conn), nil
 }
