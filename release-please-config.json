@@ -1,0 +1,9 @@
+{
+  "bump-minor-pre-major": true,
+  "packages": {
+    ".": {
+      "bump-minor-pre-major": true,
+      "release-type": "simple"
+    }
+  }
+}
