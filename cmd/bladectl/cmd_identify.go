@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spf13/cobra"

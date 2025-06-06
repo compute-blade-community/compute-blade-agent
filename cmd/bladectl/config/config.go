@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/sierrasoftworks/humane-errors-go"
-	"go.uber.org/zap"
+	"github.com/spechtlabs/go-otel-utils/otelzap"
 )
 
 type BladectlConfig struct {
@@ -58,7 +58,7 @@ func NewAuthenticatedBladectlConfig(server string, caPEM []byte, clientCertDER [
 func NewBladectlConfig(server string) *BladectlConfig {
 	hostname, err := os.Hostname()
 	if err != nil {
-		zap.L().Fatal("Failed to extract hostname", zap.Error(err))
+		otelzap.L().WithError(err).Fatal("Failed to extract hostname")
 	}
 
 	return &BladectlConfig{

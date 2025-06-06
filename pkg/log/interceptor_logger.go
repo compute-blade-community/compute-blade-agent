@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/spechtlabs/go-otel-utils/otelzap"
 	"go.uber.org/zap"
 )
 
 // InterceptorLogger adapts zap logger to interceptor logger.
 // This code is simple enough to be copied and not imported.
-func InterceptorLogger(l *zap.Logger) logging.Logger {
+func InterceptorLogger(l *otelzap.Logger) logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
 		f := make([]zap.Field, 0, len(fields)/2)
 
@@ -24,12 +25,14 @@ func InterceptorLogger(l *zap.Logger) logging.Logger {
 				f = append(f, zap.Int(key.(string), v))
 			case bool:
 				f = append(f, zap.Bool(key.(string), v))
+			case zap.Field:
+				f = append(f, v)
 			default:
 				f = append(f, zap.Any(key.(string), v))
 			}
 		}
 
-		logger := zap.L().WithOptions(zap.AddCallerSkip(4)).With(f...)
+		logger := l.WithOptions(zap.AddCallerSkip(4)).With(f...)
 
 		switch lvl {
 		case logging.LevelDebug:

@@ -4,9 +4,10 @@ package hal
 
 import (
 	"context"
+	"math"
+
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
-	"math"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
 	"github.com/warthog618/gpiod"

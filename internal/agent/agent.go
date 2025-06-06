@@ -89,7 +89,7 @@ func (a *computeBladeAgentImpl) RunAsync(ctx context.Context, cancel context.Can
 		log.FromContext(ctx).Info("Starting agent")
 		err := a.Run(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Failed to run agent", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Failed to run agent")
 			cancel(err)
 		}
 	}()
@@ -117,7 +117,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		defer wg.Done()
 		log.FromContext(ctx).Info("Starting HAL")
 		if err := a.blade.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("HAL failed", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("HAL failed")
 			cancelCtx(err)
 		}
 	}()
@@ -130,7 +130,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		for {
 			err := a.blade.WaitForEdgeButtonPress(ctx)
 			if err != nil && !errors.Is(err, context.Canceled) {
-				log.FromContext(ctx).Error("Edge button event handler failed", zap.Error(err))
+				log.FromContext(ctx).WithError(err).Error("Edge button event handler failed")
 				cancelCtx(err)
 			} else if err != nil {
 				return
@@ -151,7 +151,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		log.FromContext(ctx).Info("Starting top LED engine")
 		err := a.runTopLedEngine(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Top LED engine failed", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Top LED engine failed")
 			cancelCtx(err)
 		}
 	}()
@@ -163,7 +163,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		log.FromContext(ctx).Info("Starting edge LED engine")
 		err := a.runEdgeLedEngine(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Edge LED engine failed", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Edge LED engine failed")
 			cancelCtx(err)
 		}
 	}()
@@ -175,7 +175,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 		log.FromContext(ctx).Info("Starting fan controller")
 		err := a.runFanController(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.FromContext(ctx).Error("Fan Controller Failed", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Fan Controller Failed")
 			cancelCtx(err)
 		}
 	}()
@@ -192,7 +192,7 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 			case event := <-a.eventChan:
 				err := a.handleEvent(ctx, event)
 				if err != nil && !errors.Is(err, context.Canceled) {
-					log.FromContext(ctx).Error("Event handler failed", zap.Error(err))
+					log.FromContext(ctx).WithError(err).Error("Event handler failed")
 					cancelCtx(err)
 				}
 			}
@@ -207,16 +207,16 @@ func (a *computeBladeAgentImpl) Run(origCtx context.Context) error {
 func (a *computeBladeAgentImpl) cleanup(ctx context.Context) {
 	log.FromContext(ctx).Info("Exiting, restoring safe settings")
 	if err := a.blade.SetFanSpeed(100); err != nil {
-		log.FromContext(ctx).Error("Failed to set fan speed to 100%", zap.Error(err))
+		log.FromContext(ctx).WithError(err).Error("Failed to set fan speed to 100%")
 	}
 	if err := a.blade.SetLed(hal.LedEdge, led.Color{}); err != nil {
-		log.FromContext(ctx).Error("Failed to set edge LED to off", zap.Error(err))
+		log.FromContext(ctx).WithError(err).Error("Failed to set edge LED to off")
 	}
 	if err := a.blade.SetLed(hal.LedTop, led.Color{}); err != nil {
-		log.FromContext(ctx).Error("Failed to set edge LED to off", zap.Error(err))
+		log.FromContext(ctx).WithError(err).Error("Failed to set edge LED to off")
 	}
 	if err := a.Close(); err != nil {
-		log.FromContext(ctx).Error("Failed to close blade", zap.Error(err))
+		log.FromContext(ctx).WithError(err).Error("Failed to close blade")
 	}
 }
 
@@ -377,14 +377,14 @@ func (a *computeBladeAgentImpl) runFanController(ctx context.Context) error {
 		// Get temperature
 		temp, err := a.blade.GetTemperature()
 		if err != nil {
-			log.FromContext(ctx).Error("Failed to get temperature", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Failed to get temperature")
 			temp = 100 // set to a high value to trigger the maximum speed defined by the fan curve
 		}
 		// Derive fan speed from temperature
 		speed := a.fanController.GetFanSpeed(temp)
 		// Set fan speed
 		if err := a.blade.SetFanSpeed(speed); err != nil {
-			log.FromContext(ctx).Error("Failed to set fan speed", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("Failed to set fan speed")
 		}
 	}
 }

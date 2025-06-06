@@ -199,7 +199,7 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 			return err
 		}
 	} else {
-		log.FromContext(ctx).Info("no smart fan unit detected, assuming standard fan unit", zap.Error(err))
+		log.FromContext(ctx).WithError(err).Info("no smart fan unit detected, assuming standard fan unit")
 		// FAN PWM output for standard fan unit (GPIO 12)
 		// -> bcm2711RegGpfsel1 8:6, alt0
 		bcm.gpioMem[bcm2711RegGpfsel1] = (bcm.gpioMem[bcm2711RegGpfsel1] &^ (0b111 << 6)) | (0b100 << 6)
@@ -258,7 +258,7 @@ func (bcm *bcm2711) WaitForEdgeButtonPress(parentCtx context.Context) error {
 	go func() {
 		err := bcm.fanUnit.WaitForButtonPress(ctx)
 		if err != nil && err != context.Canceled {
-			log.FromContext(ctx).Error("failed to wait for button press", zap.Error(err))
+			log.FromContext(ctx).WithError(err).Error("failed to wait for button press")
 		} else {
 			close(fanUnitChan)
 		}
