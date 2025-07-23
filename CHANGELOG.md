@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.0...v0.11.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* **cmd_root.go:** change alias for --all flag from lowercase 'a' to uppercase 'A' for consistency with other flags ([#108](https://github.com/compute-blade-community/compute-blade-agent/issues/108)) ([ddee9b2](https://github.com/compute-blade-community/compute-blade-agent/commit/ddee9b2c14cf4c1855486c4683b6c241a8e47350))
+
 ## [0.11.0](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.10.0...v0.11.0) (2025-06-06)
 
 
