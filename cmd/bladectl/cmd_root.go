@@ -33,7 +33,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&allBlades, "all", "a", false, "control all compute-blades at the same time")
+	rootCmd.PersistentFlags().BoolVarP(&allBlades, "all", "A", false, "control all compute-blades at the same time")
 	rootCmd.PersistentFlags().StringArrayVar(&bladeNames, "blade", []string{""}, "Name of the compute-blade to control. If not provided, the compute-blade specified in `current-blade` will be used.")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "timeout for gRPC requests")
 }
