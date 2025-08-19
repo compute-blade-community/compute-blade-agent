@@ -22,7 +22,7 @@ require (
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v3 v3.0.1
-	tinygo.org/x/drivers v0.32.0
+	tinygo.org/x/drivers v0.33.0
 )
 
 require (
