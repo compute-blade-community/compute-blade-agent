@@ -140,6 +140,8 @@ github.com/spechtlabs/go-otel-utils/otelzap v0.0.10 h1:RR/WS4b+ABxNL7xzlK4FTvnuX
 github.com/spechtlabs/go-otel-utils/otelzap v0.0.10/go.mod h1:IhsBuW+sZwLxX1Ww5LmTlIonBP8GiyhsiZkIRq+ySE0=
 github.com/spechtlabs/go-otel-utils/otelzap v0.0.11 h1:D3jzku3MMLMt/CgI++Zk3TE/mnQWz9dI9y/sCBb60OA=
 github.com/spechtlabs/go-otel-utils/otelzap v0.0.11/go.mod h1:Bk/uRNkU1/MsMc2J1NUxF+0lRNDbUUIulioJevLYM74=
+github.com/spechtlabs/go-otel-utils/otelzap v0.0.13 h1:eKrf3Jd4WurABA+iw4TAZJRF2/Ke1cIzsX1wSUOZZT0=
+github.com/spechtlabs/go-otel-utils/otelzap v0.0.13/go.mod h1:Bk/uRNkU1/MsMc2J1NUxF+0lRNDbUUIulioJevLYM74=
 github.com/spf13/afero v1.14.0 h1:9tH6MapGnn/j0eb0yIXiLjERO8RB6xIVZRDCX7PtqWA=
 github.com/spf13/afero v1.14.0/go.mod h1:acJQ8t0ohCGuMN3O+Pv0V0hgMxNYDlvdk+VTfyZmbYo=
 github.com/spf13/cast v1.8.0 h1:gEN9K4b8Xws4EX0+a0reLmhq8moKn7ntRlQYgjPeCDk=
