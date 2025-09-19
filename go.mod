@@ -10,7 +10,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20250811205537-5f14a04ebff5
 	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.15
-	github.com/spechtlabs/go-otel-utils/otelzap v0.0.13
+	github.com/spechtlabs/go-otel-utils/otelzap v0.0.15
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
