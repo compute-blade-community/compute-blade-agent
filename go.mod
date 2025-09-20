@@ -18,7 +18,7 @@ require (
 	github.com/warthog618/gpiod v0.8.1
 	go.bug.st/serial v1.6.4
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.9
 	gopkg.in/yaml.v3 v3.0.1
