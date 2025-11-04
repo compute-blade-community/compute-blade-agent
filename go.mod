@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/gizak/termui/v3 v3.1.0
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/olekukonko/tablewriter v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20250811205537-5f14a04ebff5
