@@ -86,20 +86,31 @@ func (f *fanControllerLinear) GetFanSpeedPercent(temperature float64) uint8 {
 		return f.overrideOpts.Percent
 	}
 
-	if temperature <= f.config.Steps[0].Temperature {
-		return f.config.Steps[0].Percent
+	steps := f.config.Steps
+
+	// Below minimum temperature: use minimum fan speed
+	if temperature <= steps[0].Temperature {
+		return steps[0].Percent
 	}
-	if temperature >= f.config.Steps[1].Temperature {
-		return f.config.Steps[1].Percent
+
+	// Above maximum temperature: use maximum fan speed
+	lastIdx := len(steps) - 1
+	if temperature >= steps[lastIdx].Temperature {
+		return steps[lastIdx].Percent
 	}
 
-	// Calculate slope
-	slope := float64(f.config.Steps[1].Percent-f.config.Steps[0].Percent) / (f.config.Steps[1].Temperature - f.config.Steps[0].Temperature)
+	// Find the bracket where steps[i].Temperature <= temperature < steps[i+1].Temperature
+	for i := 0; i < lastIdx; i++ {
+		if temperature >= steps[i].Temperature && temperature < steps[i+1].Temperature {
+			// Linear interpolation between steps[i] and steps[i+1]
+			slope := float64(steps[i+1].Percent-steps[i].Percent) / (steps[i+1].Temperature - steps[i].Temperature)
+			speed := float64(steps[i].Percent) + slope*(temperature-steps[i].Temperature)
+			return uint8(speed)
+		}
+	}
 
-	// Calculate speed
-	speed := float64(f.config.Steps[0].Percent) + slope*(temperature-f.config.Steps[0].Temperature)
-
-	return uint8(speed)
+	// Fallback (should not reach here due to above checks)
+	return steps[lastIdx].Percent
 }
 
 func (f *fanControllerLinear) IsAutomaticSpeed() bool {
