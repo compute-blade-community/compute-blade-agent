@@ -20,7 +20,7 @@ type SimulatedHal struct {
 	isStealthMode bool
 }
 
-func NewCm4Hal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
+func NewHal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
 	logger := otelzap.L().Named("hal").Named("simulated-cm4")
 	logger.Warn("Using simulated hal")
 
