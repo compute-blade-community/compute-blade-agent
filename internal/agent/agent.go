@@ -54,7 +54,7 @@ type computeBladeAgent struct {
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
 func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentConfig, agentInfo agent.ComputeBladeAgentInfo) (agent.ComputeBladeAgent, error) {
-	blade, err := hal.NewCm4Hal(ctx, config.ComputeBladeHalOpts)
+	blade, err := hal.NewHal(ctx, config.ComputeBladeHalOpts)
 	if err != nil {
 		return nil, err
 	}
