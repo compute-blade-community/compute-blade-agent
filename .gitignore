@@ -187,3 +187,7 @@ Temporary Items
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/go,visualstudiocode,goland+all,macos,linux
+# Build artifacts
+agent
+bladectl
+compute-blade-agent
