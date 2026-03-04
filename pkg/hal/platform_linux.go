@@ -31,6 +31,8 @@ func NewHal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeHal, err
 		return newBcm2712Hal(ctx, opts)
 	case strings.Contains(compatStr, "bcm2711"):
 		return newBcm2711Hal(ctx, opts)
+	case strings.Contains(compatStr, "rockchip,rk3588"):
+		return newRk3588Hal(ctx, opts)
 	default:
 		return nil, fmt.Errorf("unsupported platform: %s", strings.ReplaceAll(compatStr, "\x00", ", "))
 	}
