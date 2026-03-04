@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.1...v0.11.2) (2026-03-04)
+
+
+### Features
+
+* **hal:** add BCM2712 (CM5/Pi 5) HAL support ([#154](https://github.com/compute-blade-community/compute-blade-agent/issues/154)) ([9477cc7](https://github.com/compute-blade-community/compute-blade-agent/commit/9477cc71c200cf193e467a8d543d8970e733a74f))
+* **hal:** add RK3588 (Radxa CM5) HAL with sysfs fan control ([#155](https://github.com/compute-blade-community/compute-blade-agent/issues/155)) ([03541fe](https://github.com/compute-blade-community/compute-blade-agent/commit/03541febb2c02ee5cf3d432128e756de4e68dfd4))
+
+
+### Bug Fixes
+
+* **fancontroller:** support more than 2 steps in fan curve ([#156](https://github.com/compute-blade-community/compute-blade-agent/issues/156)) ([8434608](https://github.com/compute-blade-community/compute-blade-agent/commit/84346089caf7cb1b163e9279bdf9fe4cf0519651))
+
 ## [0.11.1](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.0...v0.11.1) (2025-07-23)
 
 
