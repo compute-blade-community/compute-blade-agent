@@ -99,7 +99,7 @@ func (rk *rk3588) GetTemperature() (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer func() { _ = f.Close() )()
+	defer func() { _ = f.Close() }()
 
 	raw, err := io.ReadAll(f)
 	if err != nil {
