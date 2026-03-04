@@ -192,7 +192,7 @@ func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeH
 
 	log.FromContext(ctx).Info("starting hal setup", zap.String("hal", "bcm2712"))
 	if err := bcm.setup(ctx); err != nil {
-		bcm.Close()
+		_ = bcm.Close()
 		return nil, err
 	}
 	return bcm, nil
@@ -634,7 +634,7 @@ func (bcm *bcm2712) GetTemperature() (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	raw, err := io.ReadAll(f)
 	if err != nil {
