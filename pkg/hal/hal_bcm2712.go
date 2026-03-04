@@ -63,8 +63,8 @@ const (
 	rp1PwmChanBase     = 0x14 // first channel base offset (NOT 0x10)
 
 	// PWM global ctrl bits (from kernel pwm-rp1.c)
-	rp1PwmGlobalChanEnBit  = 0  // bits [3:0] = per-channel enable, BIT(x)
-	rp1PwmGlobalSetUpdate  = 31 // BIT(31) = global set_update trigger
+	rp1PwmGlobalChanEnBit = 0  // bits [3:0] = per-channel enable, BIT(x)
+	rp1PwmGlobalSetUpdate = 31 // BIT(31) = global set_update trigger
 
 	// PWM channel ctrl bits
 	rp1PwmChanCtrlModeBit        = 0 // bits [1:0]
