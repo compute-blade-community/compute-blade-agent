@@ -155,24 +155,24 @@ func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeH
 
 	gpioChip0, err := gpiod.NewChip("gpiochip0")
 	if err != nil {
-		devmem.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to open gpiochip0: %w", err)
 	}
 
 	// Memory-map RP1 GPIO bank 0 (GPIOs 0-27)
 	gpioMem, gpioMem8, err := mmap(devmem, rp1GpioBase, rp1PageSize)
 	if err != nil {
-		gpioChip0.Close()
-		devmem.Close()
+		_ = gpioChip0.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to mmap RP1 GPIO at 0x%x: %w", rp1GpioBase, err)
 	}
 
 	// Memory-map RP1 PWM0
 	pwmMem, pwmMem8, err := mmap(devmem, rp1Pwm0Base, rp1PageSize)
 	if err != nil {
-		syscall.Munmap(gpioMem8)
-		gpioChip0.Close()
-		devmem.Close()
+		_ = syscall.Munmap(gpioMem8)
+		_ = gpioChip0.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to mmap RP1 PWM0 at 0x%x: %w", rp1Pwm0Base, err)
 	}
 
