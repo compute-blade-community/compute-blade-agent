@@ -97,7 +97,7 @@ type bcm2711 struct {
 	fanUnit FanUnit
 }
 
-func NewCm4Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeHal, error) {
+func newBcm2711Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeHal, error) {
 	// /dev/gpiomem doesn't allow complex operations for PWM fan control or WS281x
 	devmem, err := os.OpenFile("/dev/mem", os.O_RDWR|os.O_SYNC, os.ModePerm)
 	if err != nil {
