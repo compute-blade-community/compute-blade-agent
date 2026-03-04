@@ -69,17 +69,17 @@ func TestFanControllerLinear_GetFanSpeedMultipleSteps(t *testing.T) {
 		temperature float64
 		expected    uint8
 	}{
-		{"below minimum", 30, 30},      // Below 40°C: use minimum 30%
-		{"at step 0", 40, 30},          // At 40°C: 30%
-		{"between step 0-1", 45, 40},   // Midpoint 40-50°C: 40%
-		{"at step 1", 50, 50},          // At 50°C: 50%
-		{"between step 1-2", 55, 60},   // Midpoint 50-60°C: 60%
-		{"at step 2", 60, 70},          // At 60°C: 70%
-		{"between step 2-3", 65, 80},   // Midpoint 60-70°C: 80%
-		{"at step 3", 70, 90},          // At 70°C: 90%
-		{"between step 3-4", 72, 94},   // 70 + (100-90)*(72-70)/(75-70) = 90 + 4 = 94%
-		{"at step 4", 75, 100},         // At 75°C: 100%
-		{"above maximum", 80, 100},     // Above 75°C: use maximum 100%
+		{"below minimum", 30, 30},       // Below 40°C: use minimum 30%
+		{"at step 0", 40, 30},           // At 40°C: 30%
+		{"between step 0-1", 45, 40},    // Midpoint 40-50°C: 40%
+		{"at step 1", 50, 50},           // At 50°C: 50%
+		{"between step 1-2", 55, 60},    // Midpoint 50-60°C: 60%
+		{"at step 2", 60, 70},           // At 60°C: 70%
+		{"between step 2-3", 65, 80},    // Midpoint 60-70°C: 80%
+		{"at step 3", 70, 90},           // At 70°C: 90%
+		{"between step 3-4", 72, 94},    // 70 + (100-90)*(72-70)/(75-70) = 90 + 4 = 94%
+		{"at step 4", 75, 100},          // At 75°C: 100%
+		{"above maximum", 80, 100},      // Above 75°C: use maximum 100%
 		{"well above maximum", 90, 100}, // Well above: still 100%
 	}
 
