@@ -63,8 +63,8 @@ const (
 	rp1PwmChanBase     = 0x14 // first channel base offset (NOT 0x10)
 
 	// PWM global ctrl bits (from kernel pwm-rp1.c)
-	rp1PwmGlobalChanEnBit  = 0  // bits [3:0] = per-channel enable, BIT(x)
-	rp1PwmGlobalSetUpdate  = 31 // BIT(31) = global set_update trigger
+	rp1PwmGlobalChanEnBit = 0  // bits [3:0] = per-channel enable, BIT(x)
+	rp1PwmGlobalSetUpdate = 31 // BIT(31) = global set_update trigger
 
 	// PWM channel ctrl bits
 	rp1PwmChanCtrlModeBit        = 0 // bits [1:0]
@@ -155,24 +155,24 @@ func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeH
 
 	gpioChip0, err := gpiod.NewChip("gpiochip0")
 	if err != nil {
-		devmem.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to open gpiochip0: %w", err)
 	}
 
 	// Memory-map RP1 GPIO bank 0 (GPIOs 0-27)
 	gpioMem, gpioMem8, err := mmap(devmem, rp1GpioBase, rp1PageSize)
 	if err != nil {
-		gpioChip0.Close()
-		devmem.Close()
+		_ = gpioChip0.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to mmap RP1 GPIO at 0x%x: %w", rp1GpioBase, err)
 	}
 
 	// Memory-map RP1 PWM0
 	pwmMem, pwmMem8, err := mmap(devmem, rp1Pwm0Base, rp1PageSize)
 	if err != nil {
-		syscall.Munmap(gpioMem8)
-		gpioChip0.Close()
-		devmem.Close()
+		_ = syscall.Munmap(gpioMem8)
+		_ = gpioChip0.Close()
+		_ = devmem.Close()
 		return nil, fmt.Errorf("failed to mmap RP1 PWM0 at 0x%x: %w", rp1Pwm0Base, err)
 	}
 
@@ -192,7 +192,7 @@ func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeH
 
 	log.FromContext(ctx).Info("starting hal setup", zap.String("hal", "bcm2712"))
 	if err := bcm.setup(ctx); err != nil {
-		bcm.Close()
+		_ = bcm.Close()
 		return nil, err
 	}
 	return bcm, nil
@@ -634,7 +634,7 @@ func (bcm *bcm2712) GetTemperature() (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	raw, err := io.ReadAll(f)
 	if err != nil {
