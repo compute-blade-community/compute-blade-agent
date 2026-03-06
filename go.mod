@@ -3,7 +3,7 @@ module github.com/compute-blade-community/compute-blade-agent
 go 1.24.0
 
 require (
-	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/charmbracelet/lipgloss/v2 v2.0.0
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/olekukonko/tablewriter v1.1.3
