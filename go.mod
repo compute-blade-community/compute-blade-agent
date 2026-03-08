@@ -1,6 +1,6 @@
 module github.com/compute-blade-community/compute-blade-agent
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -18,7 +18,7 @@ require (
 	github.com/warthog618/gpiod v0.8.1
 	go.bug.st/serial v1.6.4
 	go.uber.org/zap v1.27.1
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
