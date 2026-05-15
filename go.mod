@@ -8,7 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/prometheus/client_golang v1.23.2
-	github.com/sierrasoftworks/humane-errors-go v0.0.0-20260226124905-a7be4ffe4f32
+	github.com/sierrasoftworks/humane-errors-go v0.0.0-20260428132744-178d2d0aad2c
 	github.com/spechtlabs/go-otel-utils/otelprovider v0.0.15
 	github.com/spechtlabs/go-otel-utils/otelzap v0.0.15
 	github.com/spf13/cobra v1.10.2
