@@ -140,7 +140,7 @@ jobs:
 
       # Install cosign
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2
 
       # Install GoLang
       - name: Set up Go
