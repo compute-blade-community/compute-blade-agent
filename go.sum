@@ -202,6 +202,8 @@ github.com/sierrasoftworks/humane-errors-go v0.0.0-20260226124905-a7be4ffe4f32 h
 github.com/sierrasoftworks/humane-errors-go v0.0.0-20260226124905-a7be4ffe4f32/go.mod h1:AyTGN4SGjbmEHvVAnBy8SpCnG3hskAfZ7TJW1AzMXgk=
 github.com/sierrasoftworks/humane-errors-go v0.0.0-20260428132744-178d2d0aad2c h1:TlFCGManXBbR+EBc2Nxe/NwnUDoUzBRCaArLrmYJM5A=
 github.com/sierrasoftworks/humane-errors-go v0.0.0-20260428132744-178d2d0aad2c/go.mod h1:98WJMvl0Bvx/4pvShkeT0281OIJX6u6t1khQnMXjctg=
+github.com/sierrasoftworks/humane-errors-go v0.0.0-20260716132328-7c655fafd4b8 h1:kh7eADRqYaXVTH/OfCuvIA3GgnlUhPY7W2aMfxHBgcs=
+github.com/sierrasoftworks/humane-errors-go v0.0.0-20260716132328-7c655fafd4b8/go.mod h1:98WJMvl0Bvx/4pvShkeT0281OIJX6u6t1khQnMXjctg=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
 github.com/sourcegraph/conc v0.3.0/go.mod h1:Sdozi7LEKbFPqYX2/J+iBAM6HpqSLTASQIKqDmF7Mt0=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
