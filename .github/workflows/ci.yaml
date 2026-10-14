@@ -113,7 +113,7 @@ jobs:
           cache: true
 
       # Setup tinygo
-      - uses: acifani/setup-tinygo@v2
+      - uses: acifani/setup-tinygo@v3
         with:
           tinygo-version: "0.37.0"
 
