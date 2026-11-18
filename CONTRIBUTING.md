@@ -1,5 +1,21 @@
 # Contributing
 
+## Development Setup
+
+The toolchain (Go, TinyGo, golangci-lint, goreleaser, actionlint) is pinned in [`mise.toml`](mise.toml). With [mise](https://mise.jdx.dev/) installed, run this from the repository root:
+
+```sh
+mise install
+```
+
+mise puts the pinned versions on your `PATH` inside the repository, so the usual commands work as-is:
+
+```sh
+make test            # go test ./...
+make lint            # golangci-lint run
+make build-fanunit   # TinyGo firmware for the smart fan unit
+```
+
 ## Releases
 
 This project uses [release-please](https://github.com/googleapis/release-please) and [goreleaser](https://goreleaser.com/) to automate releases based on conventional commits.
