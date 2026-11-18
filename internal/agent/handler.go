@@ -40,12 +40,7 @@ func (a *computeBladeAgent) handleEvent(ctx context.Context, event events.Event)
 		if a.state.IdentifyActive() {
 			event = events.Event(events.IdentifyConfirmEvent)
 		}
-		select {
-		case a.eventChan <- event:
-		default:
-			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
-			droppedEventCounter.WithLabelValues(event.String()).Inc()
-		}
+		a.emitEvent(ctx, event)
 	case events.NoopEvent:
 	}
 

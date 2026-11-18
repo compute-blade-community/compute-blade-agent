@@ -90,27 +90,39 @@ func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 }
 
 func (s *computebladeStateImpl) IdentifyActive() bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.identifyActive
 }
 
 func (s *computebladeStateImpl) WaitForIdentifyConfirm(ctx context.Context) error {
+	s.mutex.Lock()
+	confirmChan := s.identifyConfirmChan
+	s.mutex.Unlock()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-s.identifyConfirmChan:
+	case <-confirmChan:
 		return nil
 	}
 }
 
 func (s *computebladeStateImpl) CriticalActive() bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.criticalActive
 }
 
 func (s *computebladeStateImpl) WaitForCriticalClear(ctx context.Context) error {
+	s.mutex.Lock()
+	clearChan := s.criticalConfirmChan
+	s.mutex.Unlock()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-s.criticalConfirmChan:
+	case <-clearChan:
 		return nil
 	}
 }

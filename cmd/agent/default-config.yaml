@@ -25,8 +25,8 @@ identify_led_color:
   green: 0
   blue: 16
 
-# Critical LED color
-criticalLedColor:
+# Critical LED color (top LED)
+critical_led_color:
   red: 64
   green: 0
   blue: 0
@@ -42,5 +42,7 @@ fan_controller:
     - temperature: 55
       percent: 80
 
-# Critical temperature threshold
+# Critical temperature threshold (°C). When the SoC reaches this temperature the agent enters critical mode
+# (fan at 100%, stealth mode off, top LED blinking). Critical mode is cleared again once the temperature drops
+# 5°C below the threshold. Set to 0 to disable automatic critical mode.
 critical_temperature_threshold: 60
