@@ -148,10 +148,11 @@ func renderCharts(status *bladeapiv1alpha1.StatusResponse, fanPlot, tempPlot *wi
 		}
 
 		labelBox.Text = fmt.Sprintf(
-			"%s | Identify: %s | Power: %s",
+			"%s | Identify: %s | Power: %s | Health: %s",
 			labelBox.Text,
 			activeLabel(status.IdentifyActive),
 			hal.PowerStatus(status.PowerStatus).String(),
+			conditionsLabel(status.Conditions),
 		)
 
 	}

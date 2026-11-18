@@ -280,6 +280,10 @@ func (bcm *bcm2711) GetFanRPM() (float64, error) {
 	return float64(rpm), err
 }
 
+func (bcm *bcm2711) FanRPMSupported() bool {
+	return bcm.fanUnit.Kind() != FanUnitKindStandardNoRPM
+}
+
 func (bcm *bcm2711) GetPowerStatus() (PowerStatus, error) {
 	// GPIO 23 is used for PoE detection
 	val, err := bcm.poeLine.Value()

@@ -46,3 +46,31 @@ fan_controller:
 # (fan at 100%, stealth mode off, top LED blinking). Critical mode is cleared again once the temperature drops
 # 5°C below the threshold. Set to 0 to disable automatic critical mode.
 critical_temperature_threshold: 60
+
+# Health condition detection
+health:
+  # Detects a fan that is commanded to spin but doesn't (e.g. a dead or blocked fan).
+  # Requires RPM reporting (smart fan unit, or standard fan unit with rpm_reporting_standard_fan_unit: true).
+  fan_stall:
+    enabled: true
+    # Only judge a stall when the commanded fan speed is at least this (some fans stop at very low duty cycles)
+    min_percent: 20
+    # Below this speed the fan counts as not spinning
+    min_rpm: 100
+    # How long the fan has to stay below min_rpm before a stall is raised (covers spin-up)
+    grace_period: 15s
+
+# LED indicators for health conditions, keyed by condition.
+#   led:      top, edge or none (don't show the condition)
+#   pattern:  static, slow-blink, fast-blink or burst
+#   priority: 0-999, decides which indicator is shown if several are active on the same LED (higher wins).
+#             Identify (edge LED) and critical mode (top LED) always take precedence.
+indicators:
+  fan_stall:
+    led: top
+    pattern: fast-blink
+    priority: 30
+    color:
+      red: 64
+      green: 24
+      blue: 0

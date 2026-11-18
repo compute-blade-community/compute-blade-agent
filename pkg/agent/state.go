@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
@@ -15,7 +16,7 @@ var (
 	stateMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "computeblade_state",
 		Name:      "state",
-		Help:      "ComputeBlade state (label values are critical, identify, normal)",
+		Help:      "ComputeBlade state (label values are critical, identify, normal and the health conditions, e.g. fan_stall)",
 	}, []string{"state"})
 )
 
@@ -25,6 +26,10 @@ type ComputebladeState interface {
 	WaitForIdentifyConfirm(ctx context.Context) error
 	CriticalActive() bool
 	WaitForCriticalClear(ctx context.Context) error
+	// ConditionActive reports whether the given health condition (e.g. events.ConditionFanStall) is raised
+	ConditionActive(condition string) bool
+	// ActiveConditions returns the raised health conditions, sorted by name
+	ActiveConditions() []string
 }
 
 type computebladeStateImpl struct {
@@ -36,18 +41,25 @@ type computebladeStateImpl struct {
 	// criticalActive indicates whether the blade is currently in critical mode
 	criticalActive      bool
 	criticalConfirmChan chan struct{}
+	// conditions holds the raised health conditions
+	conditions map[string]bool
 }
 
 func NewComputeBladeState() ComputebladeState {
 	return &computebladeStateImpl{
 		identifyConfirmChan: make(chan struct{}),
 		criticalConfirmChan: make(chan struct{}),
+		conditions:          make(map[string]bool),
 	}
 }
 
 func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if condition, active, ok := event.ConditionChange(); ok {
+		s.conditions[condition] = active
+	}
+
 	switch event {
 	case events.IdentifyEvent:
 		s.identifyActive = true
@@ -63,8 +75,11 @@ func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 		close(s.criticalConfirmChan)
 		s.criticalConfirmChan = make(chan struct{})
 
+	case events.NoopEvent, events.EdgeButtonEvent:
 	default:
-		otelzap.L().Warn("Unknown event", zap.String("event", event.String()))
+		if _, _, ok := event.ConditionChange(); !ok {
+			otelzap.L().Warn("Unknown event", zap.String("event", event.String()))
+		}
 	}
 
 	// Set identify state metric
@@ -81,8 +96,19 @@ func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 		stateMetric.WithLabelValues("critical").Set(0)
 	}
 
-	// Set critical state metric
-	if !s.criticalActive && !s.identifyActive {
+	// Set health condition metrics
+	anyCondition := false
+	for _, condition := range events.Conditions {
+		if s.conditions[condition] {
+			anyCondition = true
+			stateMetric.WithLabelValues(condition).Set(1)
+		} else {
+			stateMetric.WithLabelValues(condition).Set(0)
+		}
+	}
+
+	// Set normal state metric
+	if !s.criticalActive && !s.identifyActive && !anyCondition {
 		stateMetric.WithLabelValues("normal").Set(1)
 	} else {
 		stateMetric.WithLabelValues("normal").Set(0)
@@ -125,4 +151,24 @@ func (s *computebladeStateImpl) WaitForCriticalClear(ctx context.Context) error 
 	case <-clearChan:
 		return nil
 	}
+}
+
+func (s *computebladeStateImpl) ConditionActive(condition string) bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.conditions[condition]
+}
+
+func (s *computebladeStateImpl) ActiveConditions() []string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	active := make([]string, 0, len(s.conditions))
+	for condition, isActive := range s.conditions {
+		if isActive {
+			active = append(active, condition)
+		}
+	}
+	sort.Strings(active)
+	return active
 }

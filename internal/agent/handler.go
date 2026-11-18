@@ -5,8 +5,6 @@ import (
 	"errors"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
-	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
-	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
@@ -26,6 +24,11 @@ func (a *computeBladeAgent) handleEvent(ctx context.Context, msg events.Message)
 	// publish the event to WatchEvents subscribers
 	if event != events.NoopEvent {
 		a.eventBus.Publish(eventsTopic, msg)
+	}
+
+	// Show / hide the LED indicator of health conditions
+	if condition, active, ok := event.ConditionChange(); ok {
+		return a.setIndicator(condition, active)
 	}
 
 	// Dispatch incoming events to the right handler(s)
@@ -58,13 +61,13 @@ func (a *computeBladeAgent) handleEvent(ctx context.Context, msg events.Message)
 // handleIdentifyActive is responsible for handling the identify event by setting a burst LED pattern based on the configuration.
 func (a *computeBladeAgent) handleIdentifyActive(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify active")
-	return a.edgeLedEngine.SetPattern(ledengine.NewBurstPattern(led.Color{}, a.config.IdentifyLedColor))
+	return a.edgeLeds.Activate(ledLayerIdentify)
 }
 
 // handleIdentifyConfirm handles the confirmation of an identify event by updating the LED engine with a static idle pattern.
 func (a *computeBladeAgent) handleIdentifyConfirm(ctx context.Context) error {
 	log.FromContext(ctx).Info("Identify confirmed/cleared")
-	return a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor))
+	return a.edgeLeds.Deactivate(ledLayerIdentify)
 }
 
 // handleCriticalActive handles the system's response to a critical state by adjusting fan speed and LED indications.
@@ -82,10 +85,9 @@ func (a *computeBladeAgent) handleCriticalActive(ctx context.Context) error {
 	// Disable stealth mode (turn on LEDs)
 	setStealthModeError := a.blade.SetStealthMode(false)
 
-	// Set critical pattern for top LED
-	setPatternTopLedErr := a.topLedEngine.SetPattern(
-		ledengine.NewSlowBlinkPattern(led.Color{}, a.config.CriticalLedColor),
-	)
+	// Show critical pattern on the top LED
+	setPatternTopLedErr := a.topLeds.Activate(ledLayerCritical)
+
 	// Combine errors, but don't stop execution flow for now
 	return errors.Join(setStealthModeError, setPatternTopLedErr)
 }
@@ -100,8 +102,8 @@ func (a *computeBladeAgent) handleCriticalReset(ctx context.Context) error {
 		return err
 	}
 
-	// Set top LED off
-	if err := a.topLedEngine.SetPattern(ledengine.NewStaticPattern(led.Color{})); err != nil {
+	// Hide critical pattern on the top LED
+	if err := a.topLeds.Deactivate(ledLayerCritical); err != nil {
 		return err
 	}
 

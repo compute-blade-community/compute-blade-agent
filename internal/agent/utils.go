@@ -41,6 +41,10 @@ func toProtoEventType(event events.Event) (bladeapiv1alpha1.Event, bool) {
 		return bladeapiv1alpha1.Event_CRITICAL_RESET, true
 	case events.EdgeButtonEvent:
 		return bladeapiv1alpha1.Event_BUTTON_PRESS, true
+	case events.FanStallEvent:
+		return bladeapiv1alpha1.Event_FAN_STALL, true
+	case events.FanStallClearEvent:
+		return bladeapiv1alpha1.Event_FAN_STALL_CLEAR, true
 	default:
 		return 0, false
 	}
@@ -53,11 +57,21 @@ func toProtoEvent(msg events.Message, blade string) (*bladeapiv1alpha1.AgentEven
 		return nil, fmt.Errorf("event %s has no API representation", msg.Event)
 	}
 
-	return &bladeapiv1alpha1.AgentEvent{
+	agentEvent := &bladeapiv1alpha1.AgentEvent{
 		Event:     eventType,
 		Timestamp: timestamppb.New(msg.Timestamp),
 		Blade:     blade,
-	}, nil
+	}
+
+	switch details := msg.Details.(type) {
+	case events.FanDetails:
+		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Fan{Fan: &bladeapiv1alpha1.FanDetails{
+			TargetPercent: uint32(details.TargetPercent),
+			Rpm:           int64(details.RPM),
+		}}
+	}
+
+	return agentEvent, nil
 }
 
 // eventFilter returns a predicate matching messages whose API event type is in the given list.

@@ -93,6 +93,11 @@ func (rk *rk3588) GetFanRPM() (float64, error) {
 	return 0, nil
 }
 
+// FanRPMSupported returns false — no tachometer GPIO is mapped on the RK3588.
+func (rk *rk3588) FanRPMSupported() bool {
+	return false
+}
+
 // GetTemperature returns the SoC temperature in degrees Celsius.
 func (rk *rk3588) GetTemperature() (float64, error) {
 	f, err := os.Open(rk3588ThermalZonePath)

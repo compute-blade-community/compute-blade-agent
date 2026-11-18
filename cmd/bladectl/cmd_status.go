@@ -48,6 +48,7 @@ func printStatusTable(bladeStatus []*bladeapiv1alpha1.StatusResponse) {
 		"Identify",
 		"Critical Mode",
 		"Power Status",
+		"Health",
 	}
 
 	// Table writer setup
@@ -68,6 +69,7 @@ func printStatusTable(bladeStatus []*bladeapiv1alpha1.StatusResponse) {
 			activeStyle(status.IdentifyActive).Render(activeLabel(status.IdentifyActive)),
 			activeStyle(status.CriticalActive).Render(activeLabel(status.CriticalActive)),
 			okStyle().Render(hal.PowerStatus(status.PowerStatus).String()),
+			conditionsStyle(status.Conditions).Render(conditionsLabel(status.Conditions)),
 		}
 
 		_ = tbl.Append(row)

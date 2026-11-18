@@ -11,7 +11,19 @@ const (
 	CriticalEvent
 	CriticalResetEvent
 	EdgeButtonEvent
+	FanStallEvent
+	FanStallClearEvent
 )
+
+// Health conditions. A condition is raised and cleared by a pair of events (see Event.ConditionChange).
+const (
+	ConditionFanStall = "fan_stall"
+)
+
+// Conditions lists all known health conditions.
+var Conditions = []string{
+	ConditionFanStall,
+}
 
 func (e Event) String() string {
 	switch e {
@@ -27,9 +39,33 @@ func (e Event) String() string {
 		return "critical_reset"
 	case EdgeButtonEvent:
 		return "edge_button"
+	case FanStallEvent:
+		return "fan_stall"
+	case FanStallClearEvent:
+		return "fan_stall_clear"
 	default:
 		return "unknown"
 	}
+}
+
+// ConditionChange reports whether the event raises (active=true) or clears (active=false) a health condition.
+func (e Event) ConditionChange() (condition string, active bool, ok bool) {
+	switch e {
+	case FanStallEvent:
+		return ConditionFanStall, true, true
+	case FanStallClearEvent:
+		return ConditionFanStall, false, true
+	default:
+		return "", false, false
+	}
+}
+
+// FanDetails are attached to fan stall events.
+type FanDetails struct {
+	// TargetPercent is the fan speed the agent commanded
+	TargetPercent uint8
+	// RPM is the fan speed measured by the tachometer
+	RPM float64
 }
 
 // Message is an Event together with the time it occurred and optional, event-specific details.

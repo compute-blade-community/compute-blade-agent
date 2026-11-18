@@ -3,6 +3,7 @@ package ledengine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -73,6 +74,43 @@ func NewStaticPattern(color led.Color) BlinkPattern {
 		BaseColor:   color,
 		ActiveColor: color,
 		Delays:      []time.Duration{time.Hour}, // 1h delay, we don't care as there are no color changes involved
+	}
+}
+
+// NewFastBlinkPattern creates a new fast blink pattern (~500ms cycle duration with 250ms off and 250ms on)
+func NewFastBlinkPattern(baseColor led.Color, activeColor led.Color) BlinkPattern {
+	return BlinkPattern{
+		BaseColor:   baseColor,
+		ActiveColor: activeColor,
+		Delays: []time.Duration{
+			250 * time.Millisecond, // 250ms off
+			250 * time.Millisecond, // 250ms on
+		},
+	}
+}
+
+// Pattern names accepted by PatternFromName
+const (
+	PatternStatic    = "static"
+	PatternSlowBlink = "slow-blink"
+	PatternFastBlink = "fast-blink"
+	PatternBurst     = "burst"
+)
+
+// PatternFromName builds a pattern by name, blinking between off and the given color.
+func PatternFromName(name string, color led.Color) (BlinkPattern, error) {
+	switch name {
+	case PatternStatic:
+		return NewStaticPattern(color), nil
+	case PatternSlowBlink:
+		return NewSlowBlinkPattern(led.Color{}, color), nil
+	case PatternFastBlink:
+		return NewFastBlinkPattern(led.Color{}, color), nil
+	case PatternBurst:
+		return NewBurstPattern(led.Color{}, color), nil
+	default:
+		return BlinkPattern{}, fmt.Errorf("unknown LED pattern %q, must be one of: %s, %s, %s, %s",
+			name, PatternStatic, PatternSlowBlink, PatternFastBlink, PatternBurst)
 	}
 }
 
