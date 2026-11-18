@@ -1,5 +1,7 @@
 package events
 
+import "time"
+
 type Event int
 
 const (
@@ -27,5 +29,23 @@ func (e Event) String() string {
 		return "edge_button"
 	default:
 		return "unknown"
+	}
+}
+
+// Message is an Event together with the time it occurred and optional, event-specific details.
+// Messages flow through the agent's event handler and are published to WatchEvents subscribers.
+type Message struct {
+	Event     Event
+	Timestamp time.Time
+	// Details carries event-specific information (e.g. which button gesture was recognised). May be nil.
+	Details any
+}
+
+// NewMessage creates a Message for the given event, timestamped now.
+func NewMessage(event Event, details any) Message {
+	return Message{
+		Event:     event,
+		Timestamp: time.Now(),
+		Details:   details,
 	}
 }

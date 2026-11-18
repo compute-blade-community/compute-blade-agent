@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	grpczap "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
@@ -72,7 +73,7 @@ func (a *computeBladeAgent) EmitEvent(ctx context.Context, req *bladeapiv1alpha1
 	}
 
 	select {
-	case a.eventChan <- event:
+	case a.eventChan <- events.NewMessage(event, nil):
 		return &emptypb.Empty{}, nil
 	case <-ctx.Done():
 		return &emptypb.Empty{}, ctx.Err()
@@ -148,6 +149,44 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		CriticalTemperatureThreshold: int64(a.config.CriticalTemperatureThreshold),
 		Version:                      versionInfo,
 	}, nil
+}
+
+// watchEventsBufferSize is the number of events buffered per WatchEvents subscriber before events are dropped
+const watchEventsBufferSize = 64
+
+// WatchEvents streams every event handled by the agent to the client until the client disconnects or the agent stops.
+func (a *computeBladeAgent) WatchEvents(req *bladeapiv1alpha1.WatchEventsRequest, stream bladeapiv1alpha1.BladeAgentService_WatchEventsServer) error {
+	filter := eventFilter(req.GetEvents())
+	sub := a.eventBus.Subscribe(eventsTopic, watchEventsBufferSize, func(m any) bool {
+		msg, ok := m.(events.Message)
+		return ok && filter(msg)
+	})
+	defer sub.Unsubscribe()
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case <-a.shutdown:
+			return nil
+		case m, ok := <-sub.C():
+			if !ok {
+				return nil
+			}
+			msg, ok := m.(events.Message)
+			if !ok {
+				continue
+			}
+			agentEvent, err := toProtoEvent(msg, a.hostname)
+			if err != nil {
+				// Internal-only event without a public representation
+				continue
+			}
+			if err := stream.Send(agentEvent); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 // WaitForIdentifyConfirm blocks until the identify confirmation process is completed or an error occurs.

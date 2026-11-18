@@ -26,6 +26,7 @@ const (
 	BladeAgentService_SetFanSpeedAuto_FullMethodName        = "/api.bladeapi.v1alpha1.BladeAgentService/SetFanSpeedAuto"
 	BladeAgentService_SetStealthMode_FullMethodName         = "/api.bladeapi.v1alpha1.BladeAgentService/SetStealthMode"
 	BladeAgentService_GetStatus_FullMethodName              = "/api.bladeapi.v1alpha1.BladeAgentService/GetStatus"
+	BladeAgentService_WatchEvents_FullMethodName            = "/api.bladeapi.v1alpha1.BladeAgentService/WatchEvents"
 )
 
 // BladeAgentServiceClient is the client API for BladeAgentService service.
@@ -46,6 +47,10 @@ type BladeAgentServiceClient interface {
 	SetStealthMode(ctx context.Context, in *StealthModeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Gets the current status of the blade
 	GetStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
+	// Streams events as the agent handles them, until the client disconnects or the agent shuts down.
+	//
+	// Delivery is best-effort: a subscriber that falls behind by more than a small buffer misses events.
+	WatchEvents(ctx context.Context, in *WatchEventsRequest, opts ...grpc.CallOption) (BladeAgentService_WatchEventsClient, error)
 }
 
 type bladeAgentServiceClient struct {
@@ -110,6 +115,38 @@ func (c *bladeAgentServiceClient) GetStatus(ctx context.Context, in *emptypb.Emp
 	return out, nil
 }
 
+func (c *bladeAgentServiceClient) WatchEvents(ctx context.Context, in *WatchEventsRequest, opts ...grpc.CallOption) (BladeAgentService_WatchEventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &BladeAgentService_ServiceDesc.Streams[0], BladeAgentService_WatchEvents_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &bladeAgentServiceWatchEventsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type BladeAgentService_WatchEventsClient interface {
+	Recv() (*AgentEvent, error)
+	grpc.ClientStream
+}
+
+type bladeAgentServiceWatchEventsClient struct {
+	grpc.ClientStream
+}
+
+func (x *bladeAgentServiceWatchEventsClient) Recv() (*AgentEvent, error) {
+	m := new(AgentEvent)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // BladeAgentServiceServer is the server API for BladeAgentService service.
 // All implementations must embed UnimplementedBladeAgentServiceServer
 // for forward compatibility
@@ -128,6 +165,10 @@ type BladeAgentServiceServer interface {
 	SetStealthMode(context.Context, *StealthModeRequest) (*emptypb.Empty, error)
 	// Gets the current status of the blade
 	GetStatus(context.Context, *emptypb.Empty) (*StatusResponse, error)
+	// Streams events as the agent handles them, until the client disconnects or the agent shuts down.
+	//
+	// Delivery is best-effort: a subscriber that falls behind by more than a small buffer misses events.
+	WatchEvents(*WatchEventsRequest, BladeAgentService_WatchEventsServer) error
 	mustEmbedUnimplementedBladeAgentServiceServer()
 }
 
@@ -152,6 +193,9 @@ func (UnimplementedBladeAgentServiceServer) SetStealthMode(context.Context, *Ste
 }
 func (UnimplementedBladeAgentServiceServer) GetStatus(context.Context, *emptypb.Empty) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+}
+func (UnimplementedBladeAgentServiceServer) WatchEvents(*WatchEventsRequest, BladeAgentService_WatchEventsServer) error {
+	return status.Errorf(codes.Unimplemented, "method WatchEvents not implemented")
 }
 func (UnimplementedBladeAgentServiceServer) mustEmbedUnimplementedBladeAgentServiceServer() {}
 
@@ -274,6 +318,27 @@ func _BladeAgentService_GetStatus_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BladeAgentService_WatchEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BladeAgentServiceServer).WatchEvents(m, &bladeAgentServiceWatchEventsServer{stream})
+}
+
+type BladeAgentService_WatchEventsServer interface {
+	Send(*AgentEvent) error
+	grpc.ServerStream
+}
+
+type bladeAgentServiceWatchEventsServer struct {
+	grpc.ServerStream
+}
+
+func (x *bladeAgentServiceWatchEventsServer) Send(m *AgentEvent) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // BladeAgentService_ServiceDesc is the grpc.ServiceDesc for BladeAgentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -306,6 +371,12 @@ var BladeAgentService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _BladeAgentService_GetStatus_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchEvents",
+			Handler:       _BladeAgentService_WatchEvents_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/bladeapi/v1alpha1/blade.proto",
 }

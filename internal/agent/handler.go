@@ -11,13 +11,22 @@ import (
 	"go.uber.org/zap"
 )
 
+// eventsTopic is the event bus topic every handled event is published to (consumed by WatchEvents)
+const eventsTopic = "agent:events"
+
 // handleEvent processes an incoming event, updates state, and dispatches it to the appropriate handler based on the event type.
-func (a *computeBladeAgent) handleEvent(ctx context.Context, event events.Event) error {
+func (a *computeBladeAgent) handleEvent(ctx context.Context, msg events.Message) error {
+	event := msg.Event
 	log.FromContext(ctx).Info("Handling event", zap.String("event", event.String()))
 	eventCounter.WithLabelValues(event.String()).Inc()
 
 	// register event in state
 	a.state.RegisterEvent(event)
+
+	// publish the event to WatchEvents subscribers
+	if event != events.NoopEvent {
+		a.eventBus.Publish(eventsTopic, msg)
+	}
 
 	// Dispatch incoming events to the right handler(s)
 	switch event {

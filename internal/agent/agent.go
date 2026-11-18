@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"sync"
 	"time"
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
@@ -52,9 +54,17 @@ type computeBladeAgent struct {
 	edgeLedEngine ledengine.LedEngine
 	topLedEngine  ledengine.LedEngine
 	fanController fancontroller.FanController
-	eventChan     chan events.Event
+	eventChan     chan events.Message
 	server        *grpc.Server
 	agentInfo     agent.ComputeBladeAgentInfo
+
+	// eventBus fans handled events out to WatchEvents subscribers
+	eventBus events.EventBus
+	// hostname is reported as the blade name in published events
+	hostname string
+	// shutdown is closed when the agent stops, ending all WatchEvents streams so the gRPC server can stop gracefully
+	shutdown     chan struct{}
+	shutdownOnce sync.Once
 
 	// criticalDetector raises critical mode when the SoC temperature exceeds the configured threshold.
 	// Only accessed from the fan controller goroutine.
@@ -73,6 +83,11 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 		return nil, err
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, humane.Wrap(err, "failed to determine hostname")
+	}
+
 	a := &computeBladeAgent{
 		config:        config,
 		blade:         blade,
@@ -80,8 +95,11 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 		topLedEngine:  ledengine.New(blade, hal.LedTop),
 		fanController: fanController,
 		state:         agent.NewComputeBladeState(),
-		eventChan:     make(chan events.Event, 10),
+		eventChan:     make(chan events.Message, 10),
 		agentInfo:     agentInfo,
+		eventBus:      events.New(),
+		hostname:      hostname,
+		shutdown:      make(chan struct{}),
 		criticalDetector: health.ThresholdDetector{
 			Threshold:  float64(config.CriticalTemperatureThreshold),
 			Hysteresis: criticalTemperatureHysteresis,
@@ -154,6 +172,8 @@ func (a *computeBladeAgent) Run(origCtx context.Context) error {
 
 // GracefulStop gracefully stops the gRPC server, ensuring all in-progress RPCs are completed before shutting down.
 func (a *computeBladeAgent) GracefulStop(ctx context.Context) error {
+	// End all event streams first, GracefulStop waits for them to return
+	a.shutdownOnce.Do(func() { close(a.shutdown) })
 	a.server.GracefulStop()
 
 	log.FromContext(ctx).Info("Exiting, restoring safe settings")
@@ -293,11 +313,17 @@ func (a *computeBladeAgent) evaluateCriticalTemperature(ctx context.Context, tem
 // emitEvent queues an event for the event handler without blocking. If the queue is full, the event is dropped and
 // counted in droppedEventCounter.
 func (a *computeBladeAgent) emitEvent(ctx context.Context, event events.Event) {
+	a.emitMessage(ctx, events.NewMessage(event, nil))
+}
+
+// emitMessage queues an event message (an event with details) for the event handler without blocking.
+// If the queue is full, the event is dropped and counted in droppedEventCounter.
+func (a *computeBladeAgent) emitMessage(ctx context.Context, msg events.Message) {
 	select {
-	case a.eventChan <- event:
+	case a.eventChan <- msg:
 	default:
-		log.FromContext(ctx).Warn("Event dropped due to backlog", zap.String("event", event.String()))
-		droppedEventCounter.WithLabelValues(event.String()).Inc()
+		log.FromContext(ctx).Warn("Event dropped due to backlog", zap.String("event", msg.Event.String()))
+		droppedEventCounter.WithLabelValues(msg.Event.String()).Inc()
 	}
 }
 
@@ -328,8 +354,8 @@ func (a *computeBladeAgent) runEventHandler(ctx context.Context, cancel context.
 		case <-ctx.Done():
 			return
 
-		case event := <-a.eventChan:
-			err := a.handleEvent(ctx, event)
+		case msg := <-a.eventChan:
+			err := a.handleEvent(ctx, msg)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				log.FromContext(ctx).WithError(err).Error("Event handler failed")
 				cancel(err)

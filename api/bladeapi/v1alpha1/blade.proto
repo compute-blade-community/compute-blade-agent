@@ -1,16 +1,22 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 package api.bladeapi.v1alpha1;
 
 option go_package = "github.com/uptime-induestries/compute-blade-agent/api/blade/v1alpha1;bladeapiv1alpha1";
 
-// Event is an event the agent reacts to
+// Event is an event the agent reacts to.
+//
+// IDENTIFY, IDENTIFY_CONFIRM, CRITICAL and CRITICAL_RESET can be sent to the agent with EmitEvent.
+// All events are published to WatchEvents subscribers.
 enum Event {
   IDENTIFY = 0;
   IDENTIFY_CONFIRM = 1;
   CRITICAL = 2;
   CRITICAL_RESET = 3;
+  // A button (edge button or fan unit button) was pressed. Published only.
+  BUTTON_PRESS = 4;
 }
 
 // FanUnit defines the fan unit detected by the blade
@@ -62,6 +68,20 @@ message StatusResponse {
   VersionInfo version = 11;
 }
 
+message WatchEventsRequest {
+  // Only stream these event types. If empty, all events are streamed.
+  repeated Event events = 1;
+}
+
+// AgentEvent is an event published by the agent.
+message AgentEvent {
+  Event event = 1;
+  // When the event occurred on the blade.
+  google.protobuf.Timestamp timestamp = 2;
+  // Hostname of the blade that published the event.
+  string blade = 3;
+}
+
 service BladeAgentService {
   // EmitEvent emits an event to the blade
   rpc EmitEvent(EmitEventRequest) returns (google.protobuf.Empty) {}
@@ -82,4 +102,9 @@ service BladeAgentService {
 
   // Gets the current status of the blade
   rpc GetStatus(google.protobuf.Empty) returns (StatusResponse) {}
+
+  // Streams events as the agent handles them, until the client disconnects or the agent shuts down.
+  //
+  // Delivery is best-effort: a subscriber that falls behind by more than a small buffer misses events.
+  rpc WatchEvents(WatchEventsRequest) returns (stream AgentEvent) {}
 }
