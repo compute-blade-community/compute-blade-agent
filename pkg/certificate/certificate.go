@@ -76,7 +76,7 @@ func ValidateCertificate(certPEM []byte, keyPEM []byte) (cert *x509.Certificate,
 
 	// Compare public keys
 	certPub, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	if !ok || certPub.X.Cmp(key.X) != 0 || certPub.Y.Cmp(key.Y) != 0 {
+	if !ok || !certPub.Equal(&key.PublicKey) {
 		return nil, nil, humane.New("private key does not match certificate",
 			"Verify the certificate and private key match.",
 			"To verify on the CLI, use:",
