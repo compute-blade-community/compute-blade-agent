@@ -34,6 +34,9 @@ func SetDefaults(v *viper.Viper) {
 	v.SetDefault("button.long_press.hold", 5*time.Second)
 	v.SetDefault("button.multi_press.count", 5)
 
+	// Announce the API via mDNS (only when listening on TCP)
+	v.SetDefault("discovery.mdns.enabled", true)
+
 	// Fan stall indicator: fast blinking orange on the top LED
 	setIndicatorDefaults(v, events.ConditionFanStall, IndicatorLedTop, "fast-blink", 64, 24, 0, 30)
 	// Under-voltage indicator: amber bursts on the top LED

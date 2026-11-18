@@ -2,8 +2,10 @@ package config
 
 import (
 	"encoding/base64"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spechtlabs/go-otel-utils/otelzap"
@@ -91,4 +93,65 @@ func EnsureBladectlConfigHome() (string, humane.Error) {
 	}
 
 	return configDir, nil
+}
+
+// DiscoveryResult describes what MergeDiscovered did with a discovered blade
+type DiscoveryResult int
+
+const (
+	// DiscoveryUnchanged means the blade is configured with the discovered address already
+	DiscoveryUnchanged DiscoveryResult = iota
+	// DiscoveryUpdated means the server address of a configured blade was updated
+	DiscoveryUpdated
+	// DiscoveryAdded means the blade was added to the configuration
+	DiscoveryAdded
+	// DiscoveryNeedsCredentials means the blade requires mTLS and isn't configured yet. Its client certificate has to
+	// be copied from the blade (~/.config/bladectl/config.yaml), it can't be added automatically.
+	DiscoveryNeedsCredentials
+	// DiscoveryLocal means the blade is configured with a local address (unix socket or localhost), which is kept
+	DiscoveryLocal
+)
+
+// MergeDiscovered adds or updates a blade found via discovery. Blades are matched by name.
+func (c *BladectlConfig) MergeDiscovered(name string, server string, authenticated bool) DiscoveryResult {
+	for idx := range c.Blades {
+		blade := &c.Blades[idx].Blade
+		if c.Blades[idx].Name != name {
+			continue
+		}
+		if isLocalServer(blade.Server) {
+			return DiscoveryLocal
+		}
+		if blade.Server == server {
+			return DiscoveryUnchanged
+		}
+		blade.Server = server
+		return DiscoveryUpdated
+	}
+
+	if authenticated {
+		return DiscoveryNeedsCredentials
+	}
+
+	c.Blades = append(c.Blades, NamedBlade{Name: name, Blade: Blade{Server: server}})
+	if c.CurrentBlade == "" {
+		c.CurrentBlade = name
+	}
+	return DiscoveryAdded
+}
+
+// isLocalServer reports whether a server address points to the local machine
+func isLocalServer(server string) bool {
+	if strings.HasPrefix(server, "/") || strings.HasPrefix(server, "unix:") {
+		return true
+	}
+	host, _, err := net.SplitHostPort(server)
+	if err != nil {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

@@ -141,3 +141,9 @@ button:
   multi_press:
     count: 5
     # action: emergency-poweroff
+
+# Announce the gRPC API on the local network via mDNS / DNS-SD (_compute-blade._tcp), so `bladectl discover` can find
+# the blade. Only used when the API listens on TCP (listen.mode: tcp).
+discovery:
+  mdns:
+    enabled: true

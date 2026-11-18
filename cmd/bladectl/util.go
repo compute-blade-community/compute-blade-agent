@@ -93,6 +93,10 @@ func conditionsStyle(conditions []string) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(ColorCritical)
 }
 
+func warnStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(ColorWarning)
+}
+
 func okStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(ColorOk)
 }
