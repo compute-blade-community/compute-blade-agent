@@ -109,7 +109,7 @@ jobs:
         with:
           # cosign v3 requires --bundle for sign-blob, which would change the
           # release signature format (.sig/.pem). Stay on cosign v2 for now.
-          cosign-release: v2.6.5
+          cosign-release: v3.1.4
 
       # Install GoLang
       - name: Set up Go
