@@ -84,9 +84,8 @@ const (
 	// RANGE = 50 MHz / 25 kHz = 2000
 	rp1FanPwmRange = rp1PwmClockHz / 25000
 
-	bcm2712SmartFanUnitDev  = "/dev/ttyAMA4" // UART4 on BCM2712 (same GPIO 12/13 pins as UART5 on BCM2711)
-	bcm2712ThermalZonePath  = "/sys/class/thermal/thermal_zone0/temp"
-	bcm2712DebounceInterval = 100 * time.Millisecond
+	bcm2712SmartFanUnitDev = "/dev/ttyAMA4" // UART4 on BCM2712 (same GPIO 12/13 pins as UART5 on BCM2711)
+	bcm2712ThermalZonePath = "/sys/class/thermal/thermal_zone0/temp"
 
 	// WS281x LED encoding for RP1 at 50MHz with RANGE=32 serializer mode.
 	// Each WS281x data bit is encoded as 2 × 32-bit FIFO words (1280ns per bit ≈ 781kHz).
@@ -136,9 +135,10 @@ type bcm2712 struct {
 	stealthModeLine *gpiod.Line
 
 	// Edge button input
-	edgeButtonLine         *gpiod.Line
-	edgeButtonDebounceChan chan struct{}
-	edgeButtonWatchChan    chan struct{}
+	edgeButtonLine      *gpiod.Line
+	edgeButtonDebouncer *buttonDebouncer
+	// buttonEvents receives edge button and fan unit button transitions
+	buttonEvents chan ButtonEvent
 
 	// PoE detection input
 	poeLine *gpiod.Line
@@ -180,15 +180,14 @@ func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeH
 	}
 
 	bcm := &bcm2712{
-		devmem:                 devmem,
-		gpioMem:                gpioMem,
-		gpioMem8:               gpioMem8,
-		pwmMem:                 pwmMem,
-		pwmMem8:                pwmMem8,
-		gpioChip0:              gpioChip0,
-		opts:                   opts,
-		edgeButtonDebounceChan: make(chan struct{}, 1),
-		edgeButtonWatchChan:    make(chan struct{}),
+		devmem:       devmem,
+		gpioMem:      gpioMem,
+		gpioMem8:     gpioMem8,
+		pwmMem:       pwmMem,
+		pwmMem8:      pwmMem8,
+		gpioChip0:    gpioChip0,
+		opts:         opts,
+		buttonEvents: make(chan ButtonEvent, buttonEventBufferSize),
 	}
 
 	computeModule.WithLabelValues("cm5").Set(1)
@@ -250,6 +249,12 @@ func (bcm *bcm2712) closeGpio() error {
 	if bcm.stealthModeLine != nil {
 		errs = append(errs, bcm.stealthModeLine.Close())
 	}
+	if bcm.edgeButtonDebouncer != nil {
+		bcm.edgeButtonDebouncer.stop()
+	}
+	if bcm.edgeButtonLine != nil {
+		errs = append(errs, bcm.edgeButtonLine.Close())
+	}
 	return errors.Join(errs...)
 }
 
@@ -264,10 +269,24 @@ func (bcm *bcm2712) setGpioFuncsel(gpio int, funcsel uint32) {
 func (bcm *bcm2712) setup(ctx context.Context) error {
 	var err error
 
-	// Register edge event handler for edge button (GPIO 20)
+	// Register edge event handler for edge button (GPIO 20, active low). Both edges are watched so presses and
+	// releases can be told apart (needed for long presses); the debouncer reads the settled level after each burst.
+	bcm.edgeButtonDebouncer = &buttonDebouncer{
+		settle: buttonSettleTime,
+		read: func() (bool, error) {
+			if bcm.edgeButtonLine == nil {
+				return false, errors.New("edge button line not ready")
+			}
+			val, err := bcm.edgeButtonLine.Value()
+			return val == 0, err
+		},
+		emit: func(pressed bool, at time.Time) {
+			sendButtonEvent(bcm.buttonEvents, ButtonEvent{Source: ButtonSourceEdge, Pressed: pressed, Time: at})
+		},
+	}
 	bcm.edgeButtonLine, err = bcm.gpioChip0.RequestLine(
-		rpi.GPIO20, gpiod.WithEventHandler(bcm.handleEdgeButtonEdge),
-		gpiod.WithFallingEdge, gpiod.WithPullUp, gpiod.WithDebounce(50*time.Millisecond))
+		rpi.GPIO20, gpiod.WithEventHandler(func(gpiod.LineEvent) { bcm.edgeButtonDebouncer.edge() }),
+		gpiod.WithBothEdges, gpiod.WithPullUp, gpiod.WithDebounce(10*time.Millisecond))
 	if err != nil {
 		return fmt.Errorf("failed to request GPIO20 (edge button): %w", err)
 	}
@@ -372,46 +391,16 @@ func (bcm *bcm2712) Run(parentCtx context.Context) error {
 		return bcm.fanUnit.Run(ctx)
 	})
 
+	group.Go(func() error {
+		return forwardFanUnitButton(ctx, bcm.fanUnit, bcm.buttonEvents)
+	})
+
 	return group.Wait()
 }
 
-func (bcm *bcm2712) handleEdgeButtonEdge(evt gpiod.LineEvent) {
-	select {
-	case bcm.edgeButtonDebounceChan <- struct{}{}:
-		go func() {
-			<-bcm.edgeButtonDebounceChan
-			time.Sleep(bcm2712DebounceInterval)
-			edgeButtonEventCount.Inc()
-			close(bcm.edgeButtonWatchChan)
-			bcm.edgeButtonWatchChan = make(chan struct{})
-		}()
-	default:
-		return
-	}
-}
-
-func (bcm *bcm2712) WaitForEdgeButtonPress(parentCtx context.Context) error {
-	ctx, cancel := context.WithCancel(parentCtx)
-	defer cancel()
-
-	fanUnitChan := make(chan struct{})
-	go func() {
-		err := bcm.fanUnit.WaitForButtonPress(ctx)
-		if err != nil && err != context.Canceled {
-			log.FromContext(ctx).WithError(err).Error("failed to wait for button press")
-		} else {
-			close(fanUnitChan)
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-bcm.edgeButtonWatchChan:
-		return nil
-	case <-fanUnitChan:
-		return nil
-	}
+// ButtonEvents returns the channel receiving edge button and fan unit button transitions.
+func (bcm *bcm2712) ButtonEvents() <-chan ButtonEvent {
+	return bcm.buttonEvents
 }
 
 func (bcm *bcm2712) GetFanRPM() (float64, error) {

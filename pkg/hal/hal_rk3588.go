@@ -30,6 +30,8 @@ type rk3588 struct {
 	pwmPath       string // e.g. /sys/class/hwmon/hwmon8/pwm1
 	pwmEnablePath string // e.g. /sys/class/hwmon/hwmon8/pwm1_enable
 	stealthMode   bool
+	// buttonEvents never receives anything, no button GPIO is mapped
+	buttonEvents chan ButtonEvent
 }
 
 // Compile-time interface check
@@ -59,6 +61,7 @@ func newRk3588Hal(ctx context.Context, opts ComputeBladeHalOpts) (*rk3588, error
 		opts:          opts,
 		pwmPath:       pwmPath,
 		pwmEnablePath: enablePath,
+		buttonEvents:  make(chan ButtonEvent),
 	}, nil
 }
 
@@ -155,10 +158,9 @@ func (rk *rk3588) GetPowerStatus() (PowerStatus, error) {
 	return PowerPoeOrUsbC, nil
 }
 
-// WaitForEdgeButtonPress blocks until context cancellation (no button GPIO mapped).
-func (rk *rk3588) WaitForEdgeButtonPress(ctx context.Context) error {
-	<-ctx.Done()
-	return ctx.Err()
+// ButtonEvents returns a channel that never receives anything (no button GPIO mapped).
+func (rk *rk3588) ButtonEvents() <-chan ButtonEvent {
+	return rk.buttonEvents
 }
 
 // findHwmonPwm scans /sys/class/hwmon/hwmon*/name for a device matching the given name

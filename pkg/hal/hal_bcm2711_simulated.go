@@ -18,6 +18,7 @@ var _ ComputeBladeHal = &SimulatedHal{}
 type SimulatedHal struct {
 	logger        *zap.Logger
 	isStealthMode bool
+	buttonEvents  chan ButtonEvent
 }
 
 func NewHal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
@@ -30,13 +31,26 @@ func NewHal(_ context.Context, _ ComputeBladeHalOpts) (ComputeBladeHal, error) {
 	socTemperature.Set(42)
 
 	return &SimulatedHal{
-		logger: logger,
+		logger:       logger,
+		buttonEvents: make(chan ButtonEvent, buttonEventBufferSize),
 	}, nil
 }
 
+// Run simulates a short press of the edge button every 5 seconds.
 func (m *SimulatedHal) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return ctx.Err()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case now := <-ticker.C:
+			m.logger.Info("Simulating edge button press")
+			sendButtonEvent(m.buttonEvents, ButtonEvent{Source: ButtonSourceEdge, Pressed: true, Time: now})
+			sendButtonEvent(m.buttonEvents, ButtonEvent{Source: ButtonSourceEdge, Pressed: false, Time: now.Add(100 * time.Millisecond)})
+		}
+	}
 }
 
 func (m *SimulatedHal) Close() error {
@@ -83,15 +97,8 @@ func (m *SimulatedHal) GetPowerStatus() (PowerStatus, error) {
 	return PowerPoe802at, nil
 }
 
-func (m *SimulatedHal) WaitForEdgeButtonPress(ctx context.Context) error {
-	m.logger.Info("WaitForEdgeButtonPress")
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(5 * time.Second):
-		edgeButtonEventCount.Inc()
-		return nil
-	}
+func (m *SimulatedHal) ButtonEvents() <-chan ButtonEvent {
+	return m.buttonEvents
 }
 
 func (m *SimulatedHal) SetLed(idx LedIndex, color led.Color) error {

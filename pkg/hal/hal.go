@@ -69,8 +69,9 @@ type ComputeBladeHal interface {
 	// GetThrottleStatus returns the SoC's under-voltage and throttling flags.
 	// Returns ErrNotSupported if the platform doesn't report them.
 	GetThrottleStatus() (ThrottleStatus, error)
-	// WaitForEdgeButtonPress returns a channel emitting edge button press events
-	WaitForEdgeButtonPress(ctx context.Context) error
+	// ButtonEvents returns a channel receiving button transitions (edge button presses / releases and fan unit button
+	// presses). Events are dropped if the receiver falls behind.
+	ButtonEvents() <-chan ButtonEvent
 }
 
 // FanUnit abstracts the fan unit

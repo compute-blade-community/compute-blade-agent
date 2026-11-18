@@ -37,6 +37,28 @@ Under-voltage and throttling clear once the flags stayed off for 30s. The raw fi
 Indicators share the LEDs by priority, so identify (edge LED) and critical mode (top LED) always win and the
 indicator shows up again once they are cleared. See `health` and `indicators` in the default configuration.
 
+### Button gestures
+
+The edge button recognises gestures: a `single` press, a `double` press, a `multi_press` series and a `long_press`.
+Each gesture can run a built-in action (`identify-toggle`, `shutdown`, `reboot`, `emergency-poweroff`, `none`) or any
+command:
+
+```yaml
+button:
+  single:      { action: identify-toggle }   # default
+  double:      { exec: ["/usr/local/bin/drain-node.sh"], timeout: 2m }
+  long_press:  { hold: 5s, action: shutdown }
+  multi_press: { count: 5, action: emergency-poweroff }
+```
+
+Commands run without a shell and get `BLADE_GESTURE`, `BLADE_PRESS_COUNT`, `BLADE_HOLD_MS` and `BLADE_HOSTNAME` in
+their environment. While the button is held towards a bound long press, the edge LED blinks white. Every gesture is
+published as a `button_gesture` event, so tools watching the event stream can bind their own behaviour to gestures the
+agent leaves unbound.
+
+`emergency-poweroff` powers off immediately without stopping services or unmounting file systems, for blades whose
+shutdown hangs. File systems may need repair on the next boot.
+
 ### Power policy
 
 When a blade is short on power, the agent can limit the CPU so it stays within its power budget instead of browning

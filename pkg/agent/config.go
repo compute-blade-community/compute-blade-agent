@@ -3,6 +3,7 @@ package agent
 import (
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/actions"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
@@ -62,6 +63,38 @@ type ComputeBladeAgentConfig struct {
 
 	// PowerPolicy limits the CPU when the blade is short on power
 	PowerPolicy PowerPolicyConfig `mapstructure:"power_policy"`
+
+	// Button configures what the edge button's gestures do
+	Button ButtonConfig `mapstructure:"button"`
+}
+
+// ButtonConfig binds actions to gestures of the edge button. Every gesture is published as a BUTTON_GESTURE event,
+// whether or not it has an action, so other tools can react to it via WatchEvents.
+type ButtonConfig struct {
+	// GestureWindow is the longest gap between two presses for them to count as one gesture (e.g. a double press)
+	GestureWindow time.Duration `mapstructure:"gesture_window"`
+	// Single is a single short press. Defaults to identify-toggle; set `action: none` to disable.
+	Single actions.Spec `mapstructure:"single"`
+	// Double is two short presses
+	Double actions.Spec `mapstructure:"double"`
+	// LongPress is holding the button down
+	LongPress LongPressConfig `mapstructure:"long_press"`
+	// MultiPress is a series of Count short presses
+	MultiPress MultiPressConfig `mapstructure:"multi_press"`
+}
+
+// LongPressConfig binds an action to holding the button
+type LongPressConfig struct {
+	// Hold is how long the button has to be held
+	Hold         time.Duration `mapstructure:"hold"`
+	actions.Spec `mapstructure:",squash"`
+}
+
+// MultiPressConfig binds an action to a series of short presses
+type MultiPressConfig struct {
+	// Count is the number of presses, at least 3 (1 and 2 are single and double)
+	Count        int `mapstructure:"count"`
+	actions.Spec `mapstructure:",squash"`
 }
 
 // PowerPolicyConfig defines CPU limits applied while the blade is short on power. If several apply at once, the
