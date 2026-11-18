@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
-const (
+var (
 	ColorCritical = lipgloss.Color("#cc0000")
 	ColorWarning  = lipgloss.Color("#e69138")
 	ColorOk       = lipgloss.Color("#04B575")
