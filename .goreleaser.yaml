@@ -74,7 +74,6 @@ docker_signs:
     artifacts: all
     args:
     - "sign"
-    - --oidc-issuer=https://token.actions.githubusercontent.com
     - --upload=false
     - "${artifact}"
     - --yes
@@ -84,14 +83,14 @@ docker_signs:
 # Sign everything else
 signs:
    - cmd: cosign
-     signature: "${artifact}.sig"
-     certificate: "${artifact}.pem"
+     # cosign v3 writes a single Sigstore bundle (signature + certificate)
+     # verify with: cosign verify-blob --bundle <artifact>.sigstore.json ...
+     signature: "${artifact}.sigstore.json"
      args:
      - sign-blob
-     - --oidc-issuer=https://token.actions.githubusercontent.com
-     - "--output-certificate=${certificate}"
-     - "--output-signature=${signature}"
+     - "--bundle=${signature}"
      - "${artifact}"
+     - --yes
      artifacts: all
 
 # Regular OS packages (for now only systemd based OSes)
