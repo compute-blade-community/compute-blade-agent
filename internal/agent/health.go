@@ -45,6 +45,11 @@ func (a *computeBladeAgent) runHealthMonitor(ctx context.Context) {
 		if throttleSupported {
 			throttleSupported = a.evaluateThrottleStatus(ctx)
 		}
+
+		// after the throttle status, so an under-voltage raised in this tick is acted on right away
+		if a.powerPolicy != nil {
+			a.evaluatePowerPolicy(ctx)
+		}
 	}
 }
 

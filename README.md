@@ -37,6 +37,22 @@ Under-voltage and throttling clear once the flags stayed off for 30s. The raw fi
 Indicators share the LEDs by priority, so identify (edge LED) and critical mode (top LED) always win and the
 indicator shows up again once they are cleared. See `health` and `indicators` in the default configuration.
 
+### Power policy
+
+When a blade is short on power, the agent can limit the CPU so it stays within its power budget instead of browning
+out under load. Limits are configured per reason in `power_policy` and are off by default:
+
+```yaml
+power_policy:
+  limited_power:         # not on 802.3at PoE+ (i.e. 802.3af PoE or USB-C)
+    governor: powersave
+  undervoltage:          # while the undervoltage condition is raised
+    max_freq_mhz: 1200
+```
+
+The agent publishes `power_limit` / `power_limit_clear` events, exports `computeblade_power_limit_active{reason}`
+and restores the original cpufreq settings when the limit is lifted or the agent stops.
+
 The _identify_ function can be triggered via `bladectl` or a physical button press. It makes the edge LED blink to assist locating a blade in a rack.
 
 ### `bladectl`: User Command-Line Tool

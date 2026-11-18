@@ -54,6 +54,10 @@ func toProtoEventType(event events.Event) (bladeapiv1alpha1.Event, bool) {
 		return bladeapiv1alpha1.Event_THROTTLED, true
 	case events.ThrottledClearEvent:
 		return bladeapiv1alpha1.Event_THROTTLED_CLEAR, true
+	case events.PowerLimitEvent:
+		return bladeapiv1alpha1.Event_POWER_LIMIT, true
+	case events.PowerLimitClearEvent:
+		return bladeapiv1alpha1.Event_POWER_LIMIT_CLEAR, true
 	default:
 		return 0, false
 	}
@@ -86,6 +90,12 @@ func toProtoEvent(msg events.Message, blade string) (*bladeapiv1alpha1.AgentEven
 			ArmFreqCapped: status.Has(hal.ThrottleArmFreqCapped),
 			Throttled:     status.Has(hal.ThrottleThrottled),
 			SoftTempLimit: status.Has(hal.ThrottleSoftTempLimit),
+		}}
+	case events.PowerLimitDetails:
+		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_PowerLimit{PowerLimit: &bladeapiv1alpha1.PowerLimitDetails{
+			Reasons:    details.Reasons,
+			Governor:   details.Governor,
+			MaxFreqMhz: uint32(details.MaxFreqMHz),
 		}}
 	}
 
