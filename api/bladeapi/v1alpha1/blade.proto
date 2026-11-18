@@ -21,6 +21,15 @@ enum Event {
   FAN_STALL = 5;
   // The fan is spinning again after a stall. Published only, carries FanDetails.
   FAN_STALL_CLEAR = 6;
+  // The supply voltage is too low (Raspberry Pi firmware flag). Published only, carries ThrottleDetails.
+  UNDERVOLTAGE = 7;
+  // The supply voltage is back to normal. Published only, carries ThrottleDetails.
+  UNDERVOLTAGE_CLEAR = 8;
+  // The CPU is throttled: frequency capped, throttled or at the soft temperature limit. Published only, carries
+  // ThrottleDetails.
+  THROTTLED = 9;
+  // The CPU is no longer throttled. Published only, carries ThrottleDetails.
+  THROTTLED_CLEAR = 10;
 }
 
 // FanUnit defines the fan unit detected by the blade
@@ -90,7 +99,19 @@ message AgentEvent {
   // Event-specific details, if the event carries any.
   oneof details {
     FanDetails fan = 10;
+    ThrottleDetails throttle = 11;
   }
+}
+
+// ThrottleDetails are attached to UNDERVOLTAGE(_CLEAR) and THROTTLED(_CLEAR) events.
+message ThrottleDetails {
+  // Raw Raspberry Pi firmware throttle bitfield, as reported by `vcgencmd get_throttled`.
+  uint32 flags = 1;
+  // Decoded current-state flags.
+  bool under_voltage = 2;
+  bool arm_freq_capped = 3;
+  bool throttled = 4;
+  bool soft_temp_limit = 5;
 }
 
 // FanDetails are attached to FAN_STALL and FAN_STALL_CLEAR events.

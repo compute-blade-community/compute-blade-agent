@@ -66,6 +66,9 @@ type ComputeBladeHal interface {
 	GetPowerStatus() (PowerStatus, error)
 	// GetTemperature returns the current temperature of the SoC in °C
 	GetTemperature() (float64, error)
+	// GetThrottleStatus returns the SoC's under-voltage and throttling flags.
+	// Returns ErrNotSupported if the platform doesn't report them.
+	GetThrottleStatus() (ThrottleStatus, error)
 	// WaitForEdgeButtonPress returns a channel emitting edge button press events
 	WaitForEdgeButtonPress(ctx context.Context) error
 }

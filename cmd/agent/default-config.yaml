@@ -59,6 +59,15 @@ health:
     min_rpm: 100
     # How long the fan has to stay below min_rpm before a stall is raised (covers spin-up)
     grace_period: 15s
+  # Detects a too low supply voltage, e.g. a PoE switch running out of power budget (Raspberry Pi firmware flag)
+  undervoltage:
+    enabled: true
+    # How long the voltage has to be fine again before the condition clears
+    clear_after: 30s
+  # Detects CPU throttling: frequency capped, throttled or at the soft temperature limit (Raspberry Pi firmware flags)
+  throttling:
+    enabled: true
+    clear_after: 30s
 
 # LED indicators for health conditions, keyed by condition.
 #   led:      top, edge or none (don't show the condition)
@@ -73,4 +82,21 @@ indicators:
     color:
       red: 64
       green: 24
+      blue: 0
+  undervoltage:
+    led: top
+    pattern: burst
+    priority: 20
+    color:
+      red: 64
+      green: 40
+      blue: 0
+  # Throttling is common under sustained load (soft temperature limit), so it isn't shown by default
+  throttled:
+    led: none
+    pattern: slow-blink
+    priority: 10
+    color:
+      red: 32
+      green: 32
       blue: 0

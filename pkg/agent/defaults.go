@@ -22,8 +22,18 @@ func SetDefaults(v *viper.Viper) {
 	v.SetDefault("health.fan_stall.min_rpm", 100)
 	v.SetDefault("health.fan_stall.grace_period", 15*time.Second)
 
+	// Under-voltage and throttling detection
+	v.SetDefault("health.undervoltage.enabled", true)
+	v.SetDefault("health.undervoltage.clear_after", 30*time.Second)
+	v.SetDefault("health.throttling.enabled", true)
+	v.SetDefault("health.throttling.clear_after", 30*time.Second)
+
 	// Fan stall indicator: fast blinking orange on the top LED
 	setIndicatorDefaults(v, events.ConditionFanStall, IndicatorLedTop, "fast-blink", 64, 24, 0, 30)
+	// Under-voltage indicator: amber bursts on the top LED
+	setIndicatorDefaults(v, events.ConditionUndervoltage, IndicatorLedTop, "burst", 64, 40, 0, 20)
+	// Throttling is common under sustained load (soft temperature limit), so it isn't shown by default
+	setIndicatorDefaults(v, events.ConditionThrottled, IndicatorLedNone, "slow-blink", 32, 32, 0, 10)
 }
 
 func setColorDefault(v *viper.Viper, key string, red, green, blue uint8) {

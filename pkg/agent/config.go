@@ -65,6 +65,11 @@ type ComputeBladeAgentConfig struct {
 type HealthConfig struct {
 	// FanStall configures detection of a fan that is commanded to spin but doesn't
 	FanStall health.FanStallConfig `mapstructure:"fan_stall"`
+	// Undervoltage configures detection of a too low supply voltage (Raspberry Pi firmware flag)
+	Undervoltage health.FlagConfig `mapstructure:"undervoltage"`
+	// Throttling configures detection of CPU throttling: frequency capped, throttled or soft temperature limit
+	// (Raspberry Pi firmware flags)
+	Throttling health.FlagConfig `mapstructure:"throttling"`
 }
 
 // IndicatorConfig defines how a health condition is shown on one of the LEDs

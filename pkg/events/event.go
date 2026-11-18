@@ -13,16 +13,24 @@ const (
 	EdgeButtonEvent
 	FanStallEvent
 	FanStallClearEvent
+	UndervoltageEvent
+	UndervoltageClearEvent
+	ThrottledEvent
+	ThrottledClearEvent
 )
 
 // Health conditions. A condition is raised and cleared by a pair of events (see Event.ConditionChange).
 const (
-	ConditionFanStall = "fan_stall"
+	ConditionFanStall     = "fan_stall"
+	ConditionUndervoltage = "undervoltage"
+	ConditionThrottled    = "throttled"
 )
 
 // Conditions lists all known health conditions.
 var Conditions = []string{
 	ConditionFanStall,
+	ConditionUndervoltage,
+	ConditionThrottled,
 }
 
 func (e Event) String() string {
@@ -43,6 +51,14 @@ func (e Event) String() string {
 		return "fan_stall"
 	case FanStallClearEvent:
 		return "fan_stall_clear"
+	case UndervoltageEvent:
+		return "undervoltage"
+	case UndervoltageClearEvent:
+		return "undervoltage_clear"
+	case ThrottledEvent:
+		return "throttled"
+	case ThrottledClearEvent:
+		return "throttled_clear"
 	default:
 		return "unknown"
 	}
@@ -55,6 +71,14 @@ func (e Event) ConditionChange() (condition string, active bool, ok bool) {
 		return ConditionFanStall, true, true
 	case FanStallClearEvent:
 		return ConditionFanStall, false, true
+	case UndervoltageEvent:
+		return ConditionUndervoltage, true, true
+	case UndervoltageClearEvent:
+		return ConditionUndervoltage, false, true
+	case ThrottledEvent:
+		return ConditionThrottled, true, true
+	case ThrottledClearEvent:
+		return ConditionThrottled, false, true
 	default:
 		return "", false, false
 	}
@@ -66,6 +90,12 @@ type FanDetails struct {
 	TargetPercent uint8
 	// RPM is the fan speed measured by the tachometer
 	RPM float64
+}
+
+// ThrottleDetails are attached to under-voltage and throttling events.
+type ThrottleDetails struct {
+	// Flags is the raw Raspberry Pi firmware throttle bitfield (see hal.ThrottleStatus)
+	Flags uint32
 }
 
 // Message is an Event together with the time it occurred and optional, event-specific details.

@@ -150,6 +150,10 @@ func formatEventDetails(event *bladeapiv1alpha1.AgentEvent) string {
 	switch details := event.GetDetails().(type) {
 	case *bladeapiv1alpha1.AgentEvent_Fan:
 		return fmt.Sprintf("target=%d%% rpm=%d", details.Fan.GetTargetPercent(), details.Fan.GetRpm())
+	case *bladeapiv1alpha1.AgentEvent_Throttle:
+		t := details.Throttle
+		return fmt.Sprintf("flags=0x%x under_voltage=%t arm_freq_capped=%t throttled=%t soft_temp_limit=%t",
+			t.GetFlags(), t.GetUnderVoltage(), t.GetArmFreqCapped(), t.GetThrottled(), t.GetSoftTempLimit())
 	default:
 		return ""
 	}

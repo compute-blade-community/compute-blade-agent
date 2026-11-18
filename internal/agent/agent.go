@@ -78,6 +78,11 @@ type computeBladeAgent struct {
 	// fanStallDetector raises a fan stall when the fan doesn't spin although commanded to. Nil if disabled.
 	// Only accessed from the fan controller goroutine.
 	fanStallDetector *health.FanStallDetector
+
+	// undervoltageDetector and throttlingDetector track the firmware throttle flags. Nil if disabled.
+	// Only accessed from the health monitor goroutine.
+	undervoltageDetector *health.FlagDetector
+	throttlingDetector   *health.FlagDetector
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
@@ -120,6 +125,7 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 	}
 
 	a.setupFanStallDetection(ctx)
+	a.setupThrottleDetection()
 
 	if err := a.setupGrpcServer(ctx); err != nil {
 		return nil, err
@@ -172,6 +178,9 @@ func (a *computeBladeAgent) Run(origCtx context.Context) error {
 
 	// Start fan controller
 	go a.runFanController(ctx, cancelCtx)
+
+	// Start health monitor
+	go a.runHealthMonitor(ctx)
 
 	// Start event handler
 	go a.runEventHandler(ctx, cancelCtx)

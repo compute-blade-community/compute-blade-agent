@@ -53,6 +53,16 @@ var (
 		Name:      "fan_unit",
 		Help:      "Fan unit",
 	}, []string{"type"})
+	throttleActive = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "computeblade",
+		Name:      "throttle_active",
+		Help:      "Raspberry Pi firmware throttle flags currently active (1) or not (0)",
+	}, []string{"flag"})
+	throttleOccurred = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "computeblade",
+		Name:      "throttle_occurred",
+		Help:      "Raspberry Pi firmware throttle flags that occurred since boot (1) or not (0)",
+	}, []string{"flag"})
 	edgeButtonEventCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "computeblade",
 		Name:      "edge_button_event_count",
