@@ -72,9 +72,12 @@ dockers:
 docker_signs:
   - id: oci-bundle-sign
     artifacts: all
+    # cosign v3 pushes the Sigstore bundle to ghcr.io as an OCI referrer of the image
+    # verify with: cosign verify <image> \
+    #   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+    #   --certificate-identity=https://github.com/compute-blade-community/compute-blade-agent/.github/workflows/release.yaml@refs/heads/main
     args:
     - "sign"
-    - --upload=false
     - "${artifact}"
     - --yes
     ids:
