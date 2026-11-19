@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.11.3](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.2...v0.11.3) (2026-11-19)
+
+
+### Features
+
+* **agent:** configurable button gestures with built-in and exec actions ([#220](https://github.com/compute-blade-community/compute-blade-agent/issues/220)) ([66b5864](https://github.com/compute-blade-community/compute-blade-agent/commit/66b586486398a7cb072cd30bc295e1ea0503e152))
+* **agent:** detect stalled fans and show health conditions on the LEDs ([#217](https://github.com/compute-blade-community/compute-blade-agent/issues/217)) ([a534be9](https://github.com/compute-blade-community/compute-blade-agent/commit/a534be922247f93782b5f58298b3ce8744a12220))
+* **agent:** detect under-voltage and CPU throttling ([#218](https://github.com/compute-blade-community/compute-blade-agent/issues/218)) ([49a7e06](https://github.com/compute-blade-community/compute-blade-agent/commit/49a7e069f8c86ed97d9cd0e1f98e4a4c57c3baf7))
+* **agent:** limit the CPU when the blade is short on power ([#219](https://github.com/compute-blade-community/compute-blade-agent/issues/219)) ([c9973b1](https://github.com/compute-blade-community/compute-blade-agent/commit/c9973b1f96e111676c9ef01662f669750245f4fc))
+* **api:** add WatchEvents streaming RPC and bladectl events ([#216](https://github.com/compute-blade-community/compute-blade-agent/issues/216)) ([d6e54cd](https://github.com/compute-blade-community/compute-blade-agent/commit/d6e54cdd90e5af959d8c0e63562f3aede230842c))
+* **discovery:** announce agents via mDNS and add bladectl discover ([#221](https://github.com/compute-blade-community/compute-blade-agent/issues/221)) ([b9866b3](https://github.com/compute-blade-community/compute-blade-agent/commit/b9866b361236a817136675e5fce98f0c1921407d))
+
+
+### Bug Fixes
+
+* **agent:** enter critical mode when the SoC reaches the critical threshold ([#215](https://github.com/compute-blade-community/compute-blade-agent/issues/215)) ([ba4dd34](https://github.com/compute-blade-community/compute-blade-agent/commit/ba4dd34b774403ddfebc98a7f5fef68b8aa21830))
+* **agent:** update the local bladectl config when the listen settings change ([#224](https://github.com/compute-blade-community/compute-blade-agent/issues/224)) ([d36ddb8](https://github.com/compute-blade-community/compute-blade-agent/commit/d36ddb8ed3a4ec76a57884ece790d1906cf465b6))
+
 ## [0.11.2](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.1...v0.11.2) (2026-03-04)
 
 
