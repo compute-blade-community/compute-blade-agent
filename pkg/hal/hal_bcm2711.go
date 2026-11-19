@@ -218,8 +218,12 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 	bcm.throttle, throttleErr = newThrottleReader("/")
 	logThrottleSource(ctx, bcm.throttle, throttleErr)
 
-	// Setup correct fan unit
+	// Setup correct fan unit. The smart fan unit talks over UART5 on GPIO 12/13; the firmware puts the pins on UART5 at
+	// boot, but falling back to the standard fan unit moves GPIO 12 to PWM and GPIO 13 to a GPIO input. Without moving
+	// them back, every later start would miss the smart fan unit until the next reboot, and read its serial data on
+	// GPIO 13 as tachometer pulses.
 	log.FromContext(ctx).Info("detecting fan unit")
+	bcm.gpioMem[bcm2711RegGpfsel1] = withUart5Pins(bcm.gpioMem[bcm2711RegGpfsel1])
 	detectCtx, cancel := context.WithTimeout(ctx, 3*time.Second) // temp events are sent every 2 seconds
 	defer cancel()
 
@@ -232,8 +236,7 @@ func (bcm *bcm2711) setup(ctx context.Context) error {
 	} else {
 		log.FromContext(ctx).WithError(err).Info("no smart fan unit detected, assuming standard fan unit")
 		// FAN PWM output for standard fan unit (GPIO 12)
-		// -> bcm2711RegGpfsel1 8:6, alt0
-		bcm.gpioMem[bcm2711RegGpfsel1] = (bcm.gpioMem[bcm2711RegGpfsel1] &^ (0b111 << 6)) | (0b100 << 6)
+		bcm.gpioMem[bcm2711RegGpfsel1] = withPwmFanPin(bcm.gpioMem[bcm2711RegGpfsel1])
 		bcm.fanUnit = &standardFanUnitBcm2711{
 			GpioChip0:           bcm.gpioChip0,
 			DisableRpmReporting: !bcm.opts.RpmReportingStandardFanUnit,
