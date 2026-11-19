@@ -1,22 +1,147 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
   ],
-  "commitMessagePrefix": "chore(deps):",
-  "packageRules": [
-    {
-      "description": "Automatically merge minor and patch-level updates",
-      "matchUpdateTypes": [
-        "patch",
-        "bump",
-        "minor"
-      ],
-      "automerge": true,
-      "automergeType": "branch"
-    }
+  "timezone": "Europe/Berlin",
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 8,
+  "rebaseWhen": "behind-base-branch",
+  "rangeStrategy": "bump",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "labels": [
+    "dependencies"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "dependencies",
+      "security"
+    ]
+  },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
   ],
   "ignoreDeps": [
     "github.com/warthog618/gpiod"
+  ],
+  "packageRules": [
+    {
+      "description": "mise is pinned in the setup action that every workflow job runs; move it only to a release a day old, so a broken mise release has usually been fixed before CI picks it up.",
+      "matchDepNames": [
+        "jdx/mise"
+      ],
+      "groupName": "mise",
+      "groupSlug": "mise",
+      "minimumReleaseAge": "1 day"
+    },
+    {
+      "description": "Automerge digest, pin, patch, and minor updates once CI passes. Renovate merges them itself rather than through GitHub's auto-merge: the ruleset requires only Code Quality and Unit Tests, so platform automerge would merge before the firmware and release build has run, while Renovate waits for every check to go green.",
+      "matchUpdateTypes": [
+        "digest",
+        "pin",
+        "pinDigest",
+        "patch",
+        "minor"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false
+    },
+    {
+      "description": "Keep major updates explicit.",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Group GitHub Actions updates together.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "cosign only runs in the release job, and the CI snapshot build skips signing, so nothing on a pull request exercises it. A major (like v3, which needed --bundle in .goreleaser.yaml) stays manual even inside the GitHub Actions group.",
+      "matchPackageNames": [
+        "sigstore/cosign",
+        "sigstore/cosign-installer"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Group Go module updates together.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "groupName": "Go modules",
+      "groupSlug": "go-modules"
+    },
+    {
+      "description": "Go is pinned in mise.toml (looked up as golang/go tags) and, when go.mod has one, in its toolchain directive (looked up as golang-version); move them at once. TinyGo goes along: it builds the fan unit firmware with that same Go and supports only the Go releases it knows, so a new Go minor fails the firmware build until a TinyGo release supporting it lands in the same PR.",
+      "matchManagers": [
+        "gomod",
+        "mise"
+      ],
+      "matchDepNames": [
+        "go",
+        "tinygo"
+      ],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain"
+    },
+    {
+      "description": "Leave the go directive in go.mod alone. It is the minimum language version, not the toolchain, which mise.toml pins; bumping it to a full patch version (1.27 -> 1.27.1) also makes it equal to a toolchain directive, and go mod tidy then deletes the toolchain line. Raise it by hand when the code needs a newer language version.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "golang"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "protoc-gen-go-grpc is released from the grpc-go repository under cmd/protoc-gen-go-grpc/vX.Y.Z tags; the mise registry's lookup returns grpc-go's own releases instead (offering 1.85.0, the grpc runtime version).",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDepNames": [
+        "protoc-gen-go-grpc"
+      ],
+      "overrideDatasource": "github-tags",
+      "overridePackageName": "grpc/grpc-go",
+      "extractVersion": "^cmd/protoc-gen-go-grpc/v(?<version>.+)$"
+    },
+    {
+      "description": "The protoc plugins write their version into every generated file under api/, so any bump fails generate:check until the code is regenerated, which the hosted Renovate can't do. Bundle both into one PR that waits for a human.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDepNames": [
+        "protoc-gen-go",
+        "protoc-gen-go-grpc"
+      ],
+      "groupName": "protoc plugins",
+      "groupSlug": "protoc-plugins",
+      "automerge": false,
+      "prBodyNotes": [
+        ":warning: The generated code in `api/` records the plugin versions, so **Code Quality** fails until it is regenerated: check out this branch, run `mise run generate`, and push the result."
+      ]
+    }
   ]
 }
