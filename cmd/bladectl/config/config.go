@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/sierrasoftworks/humane-errors-go"
@@ -112,32 +113,75 @@ const (
 	DiscoveryLocal
 )
 
-// MergeDiscovered adds or updates a blade found via discovery. Blades are matched by name.
-func (c *BladectlConfig) MergeDiscovered(name string, server string, authenticated bool) DiscoveryResult {
+// Discovered is a blade found on the network
+type Discovered struct {
+	// Name is the blade's name (its hostname)
+	Name string
+	// Server is the address to reach its API at, e.g. blade-pi1.local:8081
+	Server string
+	// Addresses are the blade's IP addresses
+	Addresses []net.IP
+	// Authenticated is true if the API requires mTLS client certificates
+	Authenticated bool
+}
+
+// MergeDiscovered adds or updates a blade found via discovery. Blades are matched by name. A configured server
+// address is kept as long as it still points at the blade, even if it's written differently than the discovered one.
+func (c *BladectlConfig) MergeDiscovered(found Discovered) DiscoveryResult {
 	for idx := range c.Blades {
 		blade := &c.Blades[idx].Blade
-		if c.Blades[idx].Name != name {
+		if c.Blades[idx].Name != found.Name {
 			continue
 		}
 		if isLocalServer(blade.Server) {
 			return DiscoveryLocal
 		}
-		if blade.Server == server {
+		if pointsToSameBlade(blade.Server, found) {
 			return DiscoveryUnchanged
 		}
-		blade.Server = server
+		blade.Server = found.Server
 		return DiscoveryUpdated
 	}
 
-	if authenticated {
+	if found.Authenticated {
 		return DiscoveryNeedsCredentials
 	}
 
-	c.Blades = append(c.Blades, NamedBlade{Name: name, Blade: Blade{Server: server}})
+	c.Blades = append(c.Blades, NamedBlade{Name: found.Name, Blade: Blade{Server: found.Server}})
 	if c.CurrentBlade == "" {
-		c.CurrentBlade = name
+		c.CurrentBlade = found.Name
 	}
 	return DiscoveryAdded
+}
+
+// pointsToSameBlade reports whether a configured server address reaches the discovered blade: same port, and either
+// one of the blade's IP addresses or the same host name, possibly in another domain (blade-pi1 resolved via the DNS
+// search domain, blade-pi1.local via mDNS, blade-pi1.example.net via DNS).
+func pointsToSameBlade(server string, found Discovered) bool {
+	host, port, err := net.SplitHostPort(server)
+	foundHost, foundPort, foundErr := net.SplitHostPort(found.Server)
+	if err != nil || foundErr != nil {
+		return server == found.Server
+	}
+	if port != foundPort {
+		return false
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		return slices.ContainsFunc(found.Addresses, ip.Equal)
+	}
+
+	host, foundHost = normalizeHost(host), normalizeHost(foundHost)
+	if host == foundHost {
+		return true
+	}
+	shortName, _, _ := strings.Cut(host, ".")
+	foundShortName, _, _ := strings.Cut(foundHost, ".")
+	return shortName == foundShortName
+}
+
+func normalizeHost(host string) string {
+	return strings.ToLower(strings.TrimSuffix(host, "."))
 }
 
 // isLocalServer reports whether a server address points to the local machine

@@ -12,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/libp2p/zeroconf/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -57,8 +59,23 @@ func (a Advertisement) TXT() []string {
 	}
 }
 
-// Advertise announces the agent until ctx is done.
+// errAvahiUnavailable is returned by advertiseAvahi if avahi-daemon isn't running
+var errAvahiUnavailable = errors.New("avahi-daemon is not available")
+
+// Advertise announces the agent until ctx is done. It registers the service with avahi-daemon if it runs, so the
+// host keeps a single mDNS responder, and otherwise answers mDNS queries itself.
 func Advertise(ctx context.Context, ad Advertisement) error {
+	err := advertiseAvahi(ctx, ad)
+	if !errors.Is(err, errAvahiUnavailable) {
+		return err
+	}
+	log.FromContext(ctx).Info("avahi-daemon not available, announcing via the built-in mDNS responder", zap.String("reason", err.Error()))
+	return advertiseBuiltin(ctx, ad)
+}
+
+// advertiseBuiltin runs an mDNS responder for the service and the host's address records until ctx is done.
+// It must not run next to another responder such as avahi, which would see the host's name as taken.
+func advertiseBuiltin(ctx context.Context, ad Advertisement) error {
 	server, err := zeroconf.Register(ad.Instance, ServiceType, Domain, ad.Port, ad.TXT(), nil)
 	if err != nil {
 		return fmt.Errorf("failed to register mDNS service: %w", err)

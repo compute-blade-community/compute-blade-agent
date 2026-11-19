@@ -63,7 +63,12 @@ var cmdDiscover = &cobra.Command{
 
 		results := make([]config.DiscoveryResult, len(blades))
 		for idx, blade := range blades {
-			results[idx] = cfg.MergeDiscovered(blade.Name, blade.Server(), blade.Authenticated)
+			results[idx] = cfg.MergeDiscovered(config.Discovered{
+				Name:          blade.Name,
+				Server:        blade.Server(),
+				Addresses:     blade.Addresses,
+				Authenticated: blade.Authenticated,
+			})
 		}
 
 		printDiscoveredBlades(blades, results)

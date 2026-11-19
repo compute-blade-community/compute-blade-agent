@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	charm.land/lipgloss/v2 v2.1.1
 	github.com/gizak/termui/v3 v3.1.0
+	github.com/godbus/dbus/v5 v5.2.4
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/olekukonko/tablewriter v1.1.5

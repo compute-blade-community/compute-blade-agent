@@ -193,7 +193,9 @@ scp root@blade-pi1:~/.config/bladectl/config.yaml ~/.config/bladectl/config.yaml
 ```
 
 2. Point the server address to the blade. Agents listening on TCP announce themselves via mDNS
-   (`_compute-blade._tcp`), so `bladectl discover --save` finds them and updates the address of every configured blade:
+   (`_compute-blade._tcp`, registered with avahi-daemon if it runs), so `bladectl discover --save` finds them and updates
+   the address of every configured blade. Addresses that still reach the blade (e.g. `blade-pi1:8081` instead of
+   `blade-pi1.local:8081`, or one of its IP addresses) are kept:
 
 ```bash
 bladectl discover          # list blades on the network
