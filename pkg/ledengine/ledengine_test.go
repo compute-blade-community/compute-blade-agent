@@ -13,6 +13,7 @@ import (
 	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestNewStaticPattern(t *testing.T) {
@@ -134,6 +135,22 @@ func TestLedEngine_NewLedEngineWithoutClock(t *testing.T) {
 	assert.NotNil(t, engine)
 }
 
+// signal returns a channel and a mock hook closing it, so a test can wait for a mocked call instead of sleeping
+func signal() (chan struct{}, func(mock.Arguments)) {
+	ch := make(chan struct{})
+	var once sync.Once
+	return ch, func(mock.Arguments) { once.Do(func() { close(ch) }) }
+}
+
+func waitFor(t *testing.T, ch <-chan struct{}, what string) {
+	t.Helper()
+	select {
+	case <-ch:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for %s", what)
+	}
+}
+
 func Test_LedEngine_SetPattern_WhileRunning(t *testing.T) {
 	t.Parallel()
 
@@ -141,9 +158,11 @@ func Test_LedEngine_SetPattern_WhileRunning(t *testing.T) {
 	clkAfterChan := make(chan time.Time)
 	clk.On("After", time.Hour).Times(2).Return(clkAfterChan)
 
+	started, onStarted := signal()
+	applied, onApplied := signal()
 	cbMock := hal.ComputeBladeHalMock{}
-	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil)
-	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 0}).Once().Return(nil).Run(onStarted)
+	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil).Run(onApplied)
 
 	opts := ledengine.Options{
 		Hal:    &cbMock,
@@ -159,21 +178,17 @@ func Test_LedEngine_SetPattern_WhileRunning(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		t.Log("LedEngine.Run() started")
 		err := engine.Run(ctx)
 		assert.ErrorIs(t, err, context.Canceled)
-		t.Log("LedEngine.Run() exited")
 	}()
 
-	// We want to change the pattern while the engine is running
-	time.Sleep(5 * time.Millisecond)
-
-	// Set pattern
-	t.Log("Setting pattern")
+	// Change the pattern once the engine shows the initial one
+	waitFor(t, started, "the initial pattern")
 	err := engine.SetPattern(ledengine.NewStaticPattern(led.Color{Red: 255}))
 	assert.NoError(t, err)
 
-	t.Log("Canceling context")
+	// Cancel only after the engine applied the new pattern: with both ready, select would pick either at random
+	waitFor(t, applied, "the new pattern")
 	cancel()
 	wg.Wait()
 
@@ -186,7 +201,8 @@ func Test_LedEngine_SetPattern_BeforeRun(t *testing.T) {
 
 	clk := util.MockClock{}
 	clkAfterChan := make(chan time.Time)
-	clk.On("After", time.Hour).Once().Return(clkAfterChan)
+	waiting, onWaiting := signal()
+	clk.On("After", time.Hour).Once().Return(clkAfterChan).Run(onWaiting)
 
 	cbMock := hal.ComputeBladeHalMock{}
 	cbMock.On("SetLed", hal.LedTop, led.Color{Green: 0, Blue: 0, Red: 255}).Once().Return(nil)
@@ -199,24 +215,23 @@ func Test_LedEngine_SetPattern_BeforeRun(t *testing.T) {
 
 	engine := ledengine.NewLedEngine(opts)
 	// We want to change the pattern BEFORE the engine is started
-	t.Log("Setting pattern")
 	err := engine.SetPattern(ledengine.NewStaticPattern(led.Color{Red: 255}))
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		t.Log("LedEngine.Run() started")
 		err := engine.Run(ctx)
-		assert.ErrorIs(t, err, context.DeadlineExceeded)
-		t.Log("LedEngine.Run() exited")
+		assert.ErrorIs(t, err, context.Canceled)
 	}()
 
-	t.Log("Waiting for context to timeout")
+	// The engine applied the pattern and waits for its delay
+	waitFor(t, waiting, "the engine to wait for the pattern's delay")
+	cancel()
 	wg.Wait()
 
 	clk.AssertExpectations(t)
@@ -242,25 +257,23 @@ func Test_LedEngine_SetPattern_SetLedFailureInPattern(t *testing.T) {
 
 	engine := ledengine.NewLedEngine(opts)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
-		t.Log("LedEngine.Run() started")
+		defer close(done)
 		err := engine.Run(ctx)
 		assert.Error(t, err)
-		t.Log("LedEngine.Run() exited")
 	}()
-	time.Sleep(5 * time.Millisecond)
 
-	// Time tick -> SetLed() fails
-	clkAfterChan <- time.Now()
-
-	t.Log("Waiting for context to timeout")
-	wg.Wait()
+	// Time tick -> SetLed() fails -> Run returns. The send blocks until the engine waits for the tick.
+	select {
+	case clkAfterChan <- time.Now():
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the engine to wait for a tick")
+	}
+	waitFor(t, done, "Run to return the SetLed error")
 
 	clk.AssertExpectations(t)
 	cbMock.AssertExpectations(t)
