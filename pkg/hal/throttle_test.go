@@ -63,6 +63,8 @@ func TestThrottleReader_FirmwareAttribute(t *testing.T) {
 
 		reader, err := newThrottleReader(root)
 		require.NoError(t, err, location)
+		assert.Equal(t, ThrottleSourceSysfs, reader.Source(), location)
+		assert.True(t, reader.AllFlags(), location)
 
 		status, err := reader.Read()
 		require.NoError(t, err, location)
@@ -82,6 +84,8 @@ func TestThrottleReader_HwmonFallback(t *testing.T) {
 
 	reader, err := newThrottleReader(root)
 	require.NoError(t, err)
+	assert.Equal(t, ThrottleSourceHwmon, reader.Source())
+	assert.False(t, reader.AllFlags())
 
 	status, err := reader.Read()
 	require.NoError(t, err)
@@ -98,4 +102,30 @@ func TestThrottleReader_NotSupported(t *testing.T) {
 
 	_, err := newThrottleReader(t.TempDir())
 	assert.ErrorIs(t, err, ErrNotSupported)
+}
+
+func TestThrottledMailboxMessage(t *testing.T) {
+	t.Parallel()
+
+	msg := newThrottledRequest()
+	assert.Equal(t, uint32(28), msg[0])
+	assert.Equal(t, uint32(0x00030046), msg[2])
+
+	// the firmware answers in place
+	msg[1] = 0x80000000
+	msg[4] = 0x80000004
+	msg[5] = 0x50005
+	status, err := parseThrottledResponse(msg)
+	require.NoError(t, err)
+	assert.True(t, status.UnderVoltage())
+	assert.True(t, status.Has(ThrottleUnderVoltageOccurred))
+
+	unprocessed := newThrottledRequest()
+	_, err = parseThrottledResponse(unprocessed)
+	assert.Error(t, err)
+
+	tagUnanswered := newThrottledRequest()
+	tagUnanswered[1] = 0x80000000
+	_, err = parseThrottledResponse(tagUnanswered)
+	assert.Error(t, err)
 }

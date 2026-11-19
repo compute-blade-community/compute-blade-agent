@@ -285,9 +285,9 @@ func (bcm *bcm2712) setup(ctx context.Context) error {
 	}
 
 	// Locate the firmware's under-voltage / throttling flags
-	if bcm.throttle, err = newThrottleReader("/"); err != nil {
-		log.FromContext(ctx).WithError(err).Warn("throttle status unavailable, under-voltage and throttling detection disabled")
-	}
+	var throttleErr error
+	bcm.throttle, throttleErr = newThrottleReader("/")
+	logThrottleSource(ctx, bcm.throttle, throttleErr)
 
 	// Detect fan unit type
 	log.FromContext(ctx).Info("detecting fan unit")

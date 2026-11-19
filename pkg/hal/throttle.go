@@ -3,12 +3,16 @@
 package hal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
+	"go.uber.org/zap"
 )
 
 // ErrNotSupported is returned by HAL functions the platform doesn't support.
@@ -68,29 +72,55 @@ func ParseThrottleStatus(raw string) (ThrottleStatus, error) {
 	return ThrottleStatus(parsed), nil
 }
 
-// throttleReader reads the throttle status of a Raspberry Pi SoC from sysfs.
+// Sources of the throttle status, in order of preference
+const (
+	ThrottleSourceMailbox = "firmware mailbox (/dev/vcio)"
+	ThrottleSourceSysfs   = "firmware get_throttled attribute"
+	ThrottleSourceHwmon   = "rpi_volt hwmon (under-voltage only)"
+)
+
+// throttleReader reads the throttle status of a Raspberry Pi SoC.
 type throttleReader struct {
-	// getThrottledPath is the firmware's get_throttled attribute; preferred, it reports all flags
-	getThrottledPath string
-	// undervoltageAlarmPath is the rpi_volt hwmon alarm; fallback that only reports under-voltage
-	undervoltageAlarmPath string
+	// source describes where the status comes from, one of the ThrottleSource* constants
+	source string
+	// allFlags is false if the source only reports under-voltage
+	allFlags bool
+	read     func() (ThrottleStatus, error)
 }
 
 // getThrottledGlobs are the places the raspberrypi firmware driver's get_throttled attribute lives in sysfs.
-// The firmware node's location in the device tree differs between SoC generations.
+// The firmware node's location in the device tree differs between SoC generations, and newer kernels (6.x) dropped
+// the attribute altogether.
 var getThrottledGlobs = []string{
 	"sys/devices/platform/*firmware/get_throttled",
 	"sys/devices/platform/*/*firmware/get_throttled",
 	"sys/devices/platform/*/*/*firmware/get_throttled",
 }
 
-// newThrottleReader locates the throttle status in the sysfs tree under root ("/" on a real system).
-// Returns ErrNotSupported if neither the firmware attribute nor the rpi_volt hwmon device exist.
+// newThrottleReader locates the throttle status under root ("/" on a real system). It prefers the firmware mailbox
+// (what vcgencmd uses), then the get_throttled sysfs attribute of older kernels, and falls back to the rpi_volt hwmon
+// device, which only reports under-voltage.
+// Returns ErrNotSupported if none of them are available.
 func newThrottleReader(root string) (*throttleReader, error) {
+	vcio := filepath.Join(root, "dev/vcio")
+	if _, err := os.Stat(vcio); err == nil {
+		read := func() (ThrottleStatus, error) { return readMailboxThrottled(vcio) }
+		if _, err := read(); err == nil {
+			return &throttleReader{source: ThrottleSourceMailbox, allFlags: true, read: read}, nil
+		}
+	}
+
 	for _, pattern := range getThrottledGlobs {
 		matches, err := filepath.Glob(filepath.Join(root, pattern))
 		if err == nil && len(matches) > 0 {
-			return &throttleReader{getThrottledPath: matches[0]}, nil
+			path := matches[0]
+			return &throttleReader{source: ThrottleSourceSysfs, allFlags: true, read: func() (ThrottleStatus, error) {
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return 0, err
+				}
+				return ParseThrottleStatus(string(raw))
+			}}, nil
 		}
 	}
 
@@ -102,38 +132,53 @@ func newThrottleReader(root string) (*throttleReader, error) {
 		}
 		alarm := filepath.Join(filepath.Dir(namePath), "in0_lcrit_alarm")
 		if _, err := os.Stat(alarm); err == nil {
-			return &throttleReader{undervoltageAlarmPath: alarm}, nil
+			return &throttleReader{source: ThrottleSourceHwmon, read: func() (ThrottleStatus, error) {
+				raw, err := os.ReadFile(alarm)
+				if err != nil {
+					return 0, err
+				}
+				if strings.TrimSpace(string(raw)) == "1" {
+					return ThrottleUnderVoltage, nil
+				}
+				return 0, nil
+			}}, nil
 		}
 	}
 
 	return nil, ErrNotSupported
 }
 
+// Source describes where the throttle status comes from.
+func (r *throttleReader) Source() string {
+	return r.source
+}
+
+// AllFlags reports whether the source reports throttling, not just under-voltage.
+func (r *throttleReader) AllFlags() bool {
+	return r.allFlags
+}
+
 // Read returns the current throttle status.
 func (r *throttleReader) Read() (ThrottleStatus, error) {
-	if r.getThrottledPath != "" {
-		raw, err := os.ReadFile(r.getThrottledPath)
-		if err != nil {
-			return 0, err
-		}
-		status, err := ParseThrottleStatus(string(raw))
-		if err != nil {
-			return 0, err
-		}
-		recordThrottleMetrics(status, true)
-		return status, nil
-	}
-
-	raw, err := os.ReadFile(r.undervoltageAlarmPath)
+	status, err := r.read()
 	if err != nil {
 		return 0, err
 	}
-	var status ThrottleStatus
-	if strings.TrimSpace(string(raw)) == "1" {
-		status = ThrottleUnderVoltage
-	}
-	recordThrottleMetrics(status, false)
+	recordThrottleMetrics(status, r.allFlags)
 	return status, nil
+}
+
+// logThrottleSource reports which throttle status source a HAL found, warning about missing detection.
+func logThrottleSource(ctx context.Context, reader *throttleReader, err error) {
+	switch {
+	case err != nil:
+		log.FromContext(ctx).WithError(err).Warn("throttle status unavailable, under-voltage and throttling detection disabled")
+	case !reader.AllFlags():
+		log.FromContext(ctx).Warn("only under-voltage is reported by the firmware interface found, throttling detection disabled",
+			zap.String("source", reader.Source()))
+	default:
+		log.FromContext(ctx).Info("reading throttle status", zap.String("source", reader.Source()))
+	}
 }
 
 // recordThrottleMetrics exports the throttle flags. With the hwmon fallback only under-voltage is known.
