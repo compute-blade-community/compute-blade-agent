@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.4](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.3...v0.11.4) (2026-11-19)
+
+
+### Bug Fixes
+
+* **release:** sign the container image with cosign v3 and move it to dockers_v2 ([#230](https://github.com/compute-blade-community/compute-blade-agent/issues/230)) ([4697206](https://github.com/compute-blade-community/compute-blade-agent/commit/46972068711dc11b9cda81126e6e2595ff861da7))
+
 ## [0.11.3](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.2...v0.11.3) (2026-11-19)
 
 
