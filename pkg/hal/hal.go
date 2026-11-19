@@ -51,8 +51,11 @@ type ComputeBladeHal interface {
 	Close() error
 	// SetFanSpeed sets the fan speed in percent
 	SetFanSpeed(speed uint8) error
-	// GetFanRPM returns the current fan speed in percent (based on moving average)
+	// GetFanRPM returns the current fan speed in RPM (based on moving average)
 	GetFanRPM() (float64, error)
+	// FanRPMSupported reports whether GetFanRPM reflects the real fan speed. It is false when the fan unit has no
+	// tachometer or RPM reporting was disabled; fan stall detection is skipped in that case.
+	FanRPMSupported() bool
 	// SetStealthMode enables/disables stealth mode of the blade (turning on/off the LEDs)
 	SetStealthMode(enabled bool) error
 	// StealthModeActive returns if stealth mode of the blade is currently active

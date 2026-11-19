@@ -191,3 +191,24 @@ func TestComputeBladeState_WaitForCriticalClear_Timeout(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestComputeBladeState_Conditions(t *testing.T) {
+	t.Parallel()
+
+	state := agent.NewComputeBladeState()
+	assert.False(t, state.ConditionActive(events.ConditionFanStall))
+	assert.Empty(t, state.ActiveConditions())
+
+	state.RegisterEvent(events.FanStallEvent)
+	assert.True(t, state.ConditionActive(events.ConditionFanStall))
+	assert.Equal(t, []string{events.ConditionFanStall}, state.ActiveConditions())
+
+	// conditions are independent of identify / critical
+	state.RegisterEvent(events.CriticalEvent)
+	state.RegisterEvent(events.CriticalResetEvent)
+	assert.True(t, state.ConditionActive(events.ConditionFanStall))
+
+	state.RegisterEvent(events.FanStallClearEvent)
+	assert.False(t, state.ConditionActive(events.ConditionFanStall))
+	assert.Empty(t, state.ActiveConditions())
+}

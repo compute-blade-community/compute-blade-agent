@@ -22,6 +22,16 @@ The agent runs as a system service and monitors various hardware states and even
 - Automatically enters **critical mode** (fan 100%, red LED) when overheating.
 - Exposes system metrics via a Prometheus endpoint (`/metrics`).
 
+It also watches the blade's health and raises **health conditions**, each shown as a configurable LED indicator,
+published as an event and reported by `bladectl get status`:
+
+| Condition   | Raised when                                                                    | Default indicator           |
+|-------------|--------------------------------------------------------------------------------|-----------------------------|
+| `fan_stall` | the fan is commanded to ≥20% but reports <100 RPM for 15s (needs RPM reporting) | top LED, fast-blink, orange |
+
+Indicators share the LEDs by priority, so identify (edge LED) and critical mode (top LED) always win and the
+indicator shows up again once they are cleared. See `health` and `indicators` in the default configuration.
+
 The _identify_ function can be triggered via `bladectl` or a physical button press. It makes the edge LED blink to assist locating a blade in a rack.
 
 ### `bladectl`: User Command-Line Tool

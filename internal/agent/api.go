@@ -148,6 +148,7 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		FanCurveSteps:                fanCurveSteps,
 		CriticalTemperatureThreshold: int64(a.config.CriticalTemperatureThreshold),
 		Version:                      versionInfo,
+		Conditions:                   a.state.ActiveConditions(),
 	}, nil
 }
 

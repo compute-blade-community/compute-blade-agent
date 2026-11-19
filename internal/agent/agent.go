@@ -53,6 +53,11 @@ type computeBladeAgent struct {
 	state         agent.ComputebladeState
 	edgeLedEngine ledengine.LedEngine
 	topLedEngine  ledengine.LedEngine
+	// edgeLeds and topLeds layer identify, critical mode and health indicators on the two LEDs
+	edgeLeds *ledengine.Stack
+	topLeds  *ledengine.Stack
+	// indicatorLeds maps a health condition to the LED stack its indicator is shown on
+	indicatorLeds map[string]*ledengine.Stack
 	fanController fancontroller.FanController
 	eventChan     chan events.Message
 	server        *grpc.Server
@@ -69,6 +74,10 @@ type computeBladeAgent struct {
 	// criticalDetector raises critical mode when the SoC temperature exceeds the configured threshold.
 	// Only accessed from the fan controller goroutine.
 	criticalDetector health.ThresholdDetector
+
+	// fanStallDetector raises a fan stall when the fan doesn't spin although commanded to. Nil if disabled.
+	// Only accessed from the fan controller goroutine.
+	fanStallDetector *health.FanStallDetector
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
@@ -105,6 +114,12 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 			Hysteresis: criticalTemperatureHysteresis,
 		},
 	}
+
+	if err := a.setupLeds(); err != nil {
+		return nil, err
+	}
+
+	a.setupFanStallDetection(ctx)
 
 	if err := a.setupGrpcServer(ctx); err != nil {
 		return nil, err
@@ -203,11 +218,6 @@ func (a *computeBladeAgent) runHal(ctx context.Context, cancel context.CancelCau
 // FIXME the top LED is only used to indicate emergency situations
 func (a *computeBladeAgent) runTopLedEngine(ctx context.Context, cancel context.CancelCauseFunc) {
 	log.FromContext(ctx).Info("Starting top LED engine")
-	if err := a.topLedEngine.SetPattern(ledengine.NewStaticPattern(led.Color{})); err != nil && !errors.Is(err, context.Canceled) {
-		log.FromContext(ctx).WithError(err).Error("Top LED engine failed")
-		cancel(err)
-	}
-
 	if err := a.topLedEngine.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.FromContext(ctx).WithError(err).Error("Top LED engine failed")
 		cancel(err)
@@ -217,12 +227,6 @@ func (a *computeBladeAgent) runTopLedEngine(ctx context.Context, cancel context.
 // runEdgeLedEngine runs the edge LED engine
 func (a *computeBladeAgent) runEdgeLedEngine(ctx context.Context, cancel context.CancelCauseFunc) {
 	log.FromContext(ctx).Info("Starting edge LED engine")
-
-	if err := a.edgeLedEngine.SetPattern(ledengine.NewStaticPattern(a.config.IdleLedColor)); err != nil && !errors.Is(err, context.Canceled) {
-		log.FromContext(ctx).WithError(err).Error("Edge LED engine failed")
-		cancel(err)
-	}
-
 	if err := a.edgeLedEngine.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.FromContext(ctx).WithError(err).Error("Edge LED engine failed")
 		cancel(err)
@@ -266,6 +270,38 @@ func (a *computeBladeAgent) runFanController(ctx context.Context, cancel context
 		if err := a.blade.SetFanSpeed(speed); err != nil {
 			log.FromContext(ctx).WithError(err).Error("Failed to set fan speed")
 		}
+
+		a.evaluateFanStall(ctx, speed)
+	}
+}
+
+// evaluateFanStall compares the commanded fan speed with the measured RPM and raises / clears a fan stall.
+func (a *computeBladeAgent) evaluateFanStall(ctx context.Context, targetPercent uint8) {
+	if a.fanStallDetector == nil {
+		return
+	}
+
+	rpm, err := a.blade.GetFanRPM()
+	if err != nil {
+		log.FromContext(ctx).WithError(err).Warn("Failed to get fan RPM, skipping fan stall detection")
+		return
+	}
+
+	details := events.FanDetails{TargetPercent: targetPercent, RPM: rpm}
+	switch a.fanStallDetector.Observe(time.Now(), targetPercent, rpm) {
+	case health.Raised:
+		log.FromContext(ctx).Error("Fan stall detected: fan is not spinning although commanded to",
+			zap.Uint8("target_percent", targetPercent),
+			zap.Float64("rpm", rpm),
+		)
+		a.emitMessage(ctx, events.NewMessage(events.FanStallEvent, details))
+	case health.Cleared:
+		log.FromContext(ctx).Info("Fan is spinning again, fan stall cleared",
+			zap.Uint8("target_percent", targetPercent),
+			zap.Float64("rpm", rpm),
+		)
+		a.emitMessage(ctx, events.NewMessage(events.FanStallClearEvent, details))
+	case health.Unchanged:
 	}
 }
 

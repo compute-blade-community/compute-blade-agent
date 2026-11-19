@@ -146,8 +146,13 @@ func (p *eventPrinter) print(name string, event *bladeapiv1alpha1.AgentEvent) {
 }
 
 // formatEventDetails renders event-specific details as space separated key=value pairs
-func formatEventDetails(_ *bladeapiv1alpha1.AgentEvent) string {
-	return ""
+func formatEventDetails(event *bladeapiv1alpha1.AgentEvent) string {
+	switch details := event.GetDetails().(type) {
+	case *bladeapiv1alpha1.AgentEvent_Fan:
+		return fmt.Sprintf("target=%d%% rpm=%d", details.Fan.GetTargetPercent(), details.Fan.GetRpm())
+	default:
+		return ""
+	}
 }
 
 // eventNames returns the lower-case names of all events, as accepted by --event

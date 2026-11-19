@@ -53,6 +53,10 @@ func (m *SimulatedHal) GetFanRPM() (float64, error) {
 	return 1337, nil
 }
 
+func (m *SimulatedHal) FanRPMSupported() bool {
+	return true
+}
+
 func (m *SimulatedHal) SetStealthMode(enabled bool) error {
 	if enabled {
 		stealthModeEnabled.Set(1)

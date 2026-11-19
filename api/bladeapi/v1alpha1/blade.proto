@@ -17,6 +17,10 @@ enum Event {
   CRITICAL_RESET = 3;
   // A button (edge button or fan unit button) was pressed. Published only.
   BUTTON_PRESS = 4;
+  // The fan is commanded to spin but its tachometer reports no rotation. Published only, carries FanDetails.
+  FAN_STALL = 5;
+  // The fan is spinning again after a stall. Published only, carries FanDetails.
+  FAN_STALL_CLEAR = 6;
 }
 
 // FanUnit defines the fan unit detected by the blade
@@ -66,6 +70,8 @@ message StatusResponse {
   int64 critical_temperature_threshold = 9;
   repeated FanCurveStep fan_curve_steps = 10;
   VersionInfo version = 11;
+  // Currently raised health conditions, e.g. "fan_stall". Empty when the blade is healthy.
+  repeated string conditions = 12;
 }
 
 message WatchEventsRequest {
@@ -80,6 +86,19 @@ message AgentEvent {
   google.protobuf.Timestamp timestamp = 2;
   // Hostname of the blade that published the event.
   string blade = 3;
+
+  // Event-specific details, if the event carries any.
+  oneof details {
+    FanDetails fan = 10;
+  }
+}
+
+// FanDetails are attached to FAN_STALL and FAN_STALL_CLEAR events.
+message FanDetails {
+  // Fan speed commanded by the agent, in percent.
+  uint32 target_percent = 1;
+  // Fan speed measured by the tachometer.
+  uint32 rpm = 2;
 }
 
 service BladeAgentService {

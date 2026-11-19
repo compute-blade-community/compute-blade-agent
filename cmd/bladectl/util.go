@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 )
@@ -76,6 +77,20 @@ func rpmStyle(rpm int64) lipgloss.Style {
 	}
 
 	return lipgloss.NewStyle().Foreground(color)
+}
+
+func conditionsLabel(conditions []string) string {
+	if len(conditions) == 0 {
+		return "OK"
+	}
+	return strings.Join(conditions, ", ")
+}
+
+func conditionsStyle(conditions []string) lipgloss.Style {
+	if len(conditions) == 0 {
+		return okStyle()
+	}
+	return lipgloss.NewStyle().Foreground(ColorCritical)
 }
 
 func okStyle() lipgloss.Style {
