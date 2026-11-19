@@ -48,34 +48,36 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags: *ldflags
 
-# Docker image including both agent and bladectl
-dockers:
+# Docker image including both agent and bladectl, built and pushed in one buildx run
+dockers_v2:
   - id: oci-bundle
-    dockerfile: Dockerfile
-    goos: linux
-    goarch: arm64
     ids:
       - agent
       - bladectl
-    image_templates:
-      - ghcr.io/compute-blade-community/compute-blade-agent:latest
-      - ghcr.io/compute-blade-community/compute-blade-agent:{{ .Tag }}
-      - ghcr.io/compute-blade-community/compute-blade-agent:v{{ .Major }}
-    build_flag_templates:
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--platform=linux/arm64"
+    images:
+      - ghcr.io/compute-blade-community/compute-blade-agent
+    tags:
+      - latest
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+    platforms:
+      - linux/arm64
+    labels:
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.version: "{{ .Version }}"
 
-# Sign docker-image with cosign (keyless)
+# Sign docker-image with cosign (keyless), by digest so every tag is covered
 docker_signs:
   - id: oci-bundle-sign
-    artifacts: all
+    # cosign v3 pushes the Sigstore bundle to ghcr.io as an OCI referrer of the image
+    # verify with: cosign verify <image> \
+    #   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+    #   --certificate-identity=https://github.com/compute-blade-community/compute-blade-agent/.github/workflows/release.yaml@refs/heads/main
     args:
     - "sign"
-    - --upload=false
-    - "${artifact}"
+    - "${artifact}@${digest}"
     - --yes
     ids:
     - oci-bundle
