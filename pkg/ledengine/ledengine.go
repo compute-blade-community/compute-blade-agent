@@ -3,6 +3,7 @@ package ledengine
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
@@ -20,7 +21,9 @@ type LedEngine interface {
 
 // ledEngineImpl is the implementation of the LedEngine interface
 type ledEngineImpl struct {
-	ledIdx  hal.LedIndex
+	ledIdx hal.LedIndex
+	// mu guards restart and pattern, SetPattern may be called from any goroutine while Run is active
+	mu      sync.Mutex
 	restart chan struct{}
 	pattern BlinkPattern
 	hal     hal.ComputeBladeHal
@@ -127,6 +130,9 @@ func (b *ledEngineImpl) SetPattern(pattern BlinkPattern) error {
 		return errors.New("pattern must have at least one delay")
 	}
 
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	b.pattern = pattern
 	close(b.restart)
 	b.restart = make(chan struct{})
@@ -134,29 +140,38 @@ func (b *ledEngineImpl) SetPattern(pattern BlinkPattern) error {
 	return nil
 }
 
+// current returns the active pattern and the channel that is closed when it gets replaced
+func (b *ledEngineImpl) current() (BlinkPattern, <-chan struct{}) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.pattern, b.restart
+}
+
 // Run runs the blink engine
 func (b *ledEngineImpl) Run(ctx context.Context) error {
 	// Iterate forever unless context is done
 	for {
+		pattern, restart := b.current()
+
 		// Set the base color
-		if err := b.hal.SetLed(b.ledIdx, b.pattern.BaseColor); err != nil {
+		if err := b.hal.SetLed(b.ledIdx, pattern.BaseColor); err != nil {
 			return err
 		}
 		//  Iterate through pattern delays
 	PatternLoop:
-		for idx, delay := range b.pattern.Delays {
+		for idx, delay := range pattern.Delays {
 			select {
 			// Whenever the pattern is restarted, break the loop and start over
-			case <-b.restart:
+			case <-restart:
 				break PatternLoop
 			// Whenever the context is done, return
 			case <-ctx.Done():
 				return ctx.Err()
 			// Whenever the delay is over, change the color
 			case <-b.clock.After(delay):
-				color := b.pattern.BaseColor
+				color := pattern.BaseColor
 				if idx%2 == 0 {
-					color = b.pattern.ActiveColor
+					color = pattern.ActiveColor
 				}
 				if err := b.hal.SetLed(b.ledIdx, color); err != nil {
 					return err

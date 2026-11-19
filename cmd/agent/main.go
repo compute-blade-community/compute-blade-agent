@@ -45,11 +45,13 @@ func main() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/etc/compute-blade-agent")
+	agent.SetDefaults(viper.GetViper())
 
 	// Load potential file configs
 	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
+	legacyConfigKeys := agent.MigrateLegacyKeys(viper.GetViper())
 
 	// setup logger
 	var baseLogger *zap.Logger
@@ -129,6 +131,10 @@ func main() {
 	if err := viper.Unmarshal(&cbAgentConfig); err != nil {
 		cancelCtx(err)
 		log.FromContext(ctx).WithError(err).Fatal("Failed to load configuration")
+	}
+
+	for _, key := range legacyConfigKeys {
+		log.FromContext(ctx).Warn("Deprecated configuration key, please rename it", zap.String("key", key))
 	}
 
 	// setup stop signal handlers

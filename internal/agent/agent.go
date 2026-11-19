@@ -13,6 +13,7 @@ import (
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/health"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,6 +22,10 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
+
+// criticalTemperatureHysteresis is how far (in °C) the SoC temperature has to drop below the
+// critical threshold before an automatically raised critical state is cleared again.
+const criticalTemperatureHysteresis = 5
 
 var (
 	// eventCounter is a prometheus counter that counts the number of events handled by the agent
@@ -50,6 +55,10 @@ type computeBladeAgent struct {
 	eventChan     chan events.Event
 	server        *grpc.Server
 	agentInfo     agent.ComputeBladeAgentInfo
+
+	// criticalDetector raises critical mode when the SoC temperature exceeds the configured threshold.
+	// Only accessed from the fan controller goroutine.
+	criticalDetector health.ThresholdDetector
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
@@ -73,6 +82,10 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 		state:         agent.NewComputeBladeState(),
 		eventChan:     make(chan events.Event, 10),
 		agentInfo:     agentInfo,
+		criticalDetector: health.ThresholdDetector{
+			Threshold:  float64(config.CriticalTemperatureThreshold),
+			Hysteresis: criticalTemperatureHysteresis,
+		},
 	}
 
 	if err := a.setupGrpcServer(ctx); err != nil {
@@ -224,13 +237,67 @@ func (a *computeBladeAgent) runFanController(ctx context.Context, cancel context
 		if err != nil {
 			log.FromContext(ctx).WithError(err).Error("Failed to get temperature")
 			temp = 100 // set to a high value to trigger the maximum speed defined by the fan curve
+		} else {
+			a.evaluateCriticalTemperature(ctx, temp)
 		}
 		// Derive fan speed from temperature
-		speed := a.fanController.GetFanSpeedPercent(temp)
+		speed := a.fanSpeedPercent(temp)
 		// Set fan speed
 		if err := a.blade.SetFanSpeed(speed); err != nil {
 			log.FromContext(ctx).WithError(err).Error("Failed to set fan speed")
 		}
+	}
+}
+
+// fanSpeedPercent is the fan speed for the given temperature: the fan curve or the override set via the API, and
+// full speed while critical mode is active.
+func (a *computeBladeAgent) fanSpeedPercent(temp float64) uint8 {
+	if a.state.CriticalActive() {
+		return 100
+	}
+	return a.fanController.GetFanSpeedPercent(temp)
+}
+
+// evaluateCriticalTemperature raises critical mode when the SoC temperature reaches the configured threshold and
+// clears it again once the temperature dropped below the threshold minus a small hysteresis.
+// A critical state raised manually (e.g. via the API) is only cleared automatically if the temperature crossed the
+// threshold in the meantime.
+func (a *computeBladeAgent) evaluateCriticalTemperature(ctx context.Context, temp float64) {
+	if a.config.CriticalTemperatureThreshold == 0 {
+		return
+	}
+
+	// Critical mode was reset manually (e.g. via the API) while the blade is still hot:
+	// forget the previous state so the next observation raises critical mode again.
+	if a.criticalDetector.Active() && !a.state.CriticalActive() {
+		a.criticalDetector.Reset()
+	}
+
+	switch a.criticalDetector.Observe(temp) {
+	case health.Raised:
+		log.FromContext(ctx).Warn("SoC temperature reached critical threshold",
+			zap.Float64("temperature", temp),
+			zap.Uint("threshold", a.config.CriticalTemperatureThreshold),
+		)
+		a.emitEvent(ctx, events.CriticalEvent)
+	case health.Cleared:
+		log.FromContext(ctx).Info("SoC temperature dropped below critical threshold",
+			zap.Float64("temperature", temp),
+			zap.Uint("threshold", a.config.CriticalTemperatureThreshold),
+		)
+		a.emitEvent(ctx, events.CriticalResetEvent)
+	case health.Unchanged:
+	}
+}
+
+// emitEvent queues an event for the event handler without blocking. If the queue is full, the event is dropped and
+// counted in droppedEventCounter.
+func (a *computeBladeAgent) emitEvent(ctx context.Context, event events.Event) {
+	select {
+	case a.eventChan <- event:
+	default:
+		log.FromContext(ctx).Warn("Event dropped due to backlog", zap.String("event", event.String()))
+		droppedEventCounter.WithLabelValues(event.String()).Inc()
 	}
 }
 
@@ -249,12 +316,7 @@ func (a *computeBladeAgent) runEdgeButtonHandler(ctx context.Context, cancel con
 			return
 		}
 
-		select {
-		case a.eventChan <- events.Event(events.EdgeButtonEvent):
-		default:
-			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
-			droppedEventCounter.WithLabelValues(events.Event(events.EdgeButtonEvent).String()).Inc()
-		}
+		a.emitEvent(ctx, events.EdgeButtonEvent)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
-	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/hal/led"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/ledengine"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
@@ -40,12 +39,7 @@ func (a *computeBladeAgent) handleEvent(ctx context.Context, event events.Event)
 		if a.state.IdentifyActive() {
 			event = events.Event(events.IdentifyConfirmEvent)
 		}
-		select {
-		case a.eventChan <- event:
-		default:
-			log.FromContext(ctx).Warn("Edge button press event dropped due to backlog")
-			droppedEventCounter.WithLabelValues(event.String()).Inc()
-		}
+		a.emitEvent(ctx, event)
 	case events.NoopEvent:
 	}
 
@@ -70,8 +64,11 @@ func (a *computeBladeAgent) handleIdentifyConfirm(ctx context.Context) error {
 func (a *computeBladeAgent) handleCriticalActive(ctx context.Context) error {
 	log.FromContext(ctx).Warn("Blade in critical state, setting fan speed to 100% and turning on LEDs")
 
-	// Set fan speed to 100%
-	a.fanController.Override(&fancontroller.FanOverrideOpts{Percent: 100})
+	// Set fan speed to 100% right away. The fan controller keeps it there while critical mode is active, without
+	// touching a fan speed override set via the API.
+	if err := a.blade.SetFanSpeed(100); err != nil {
+		log.FromContext(ctx).WithError(err).Error("Failed to set fan speed")
+	}
 
 	// Disable stealth mode (turn on LEDs)
 	setStealthModeError := a.blade.SetStealthMode(false)
@@ -86,9 +83,8 @@ func (a *computeBladeAgent) handleCriticalActive(ctx context.Context) error {
 
 // handleCriticalReset handles the reset of a critical state by restoring default hardware settings for fans and LEDs.
 func (a *computeBladeAgent) handleCriticalReset(ctx context.Context) error {
-	log.FromContext(ctx).Info("Critical state cleared, setting fan speed to default and restoring LEDs to default state")
-	// Reset fan controller overrides
-	a.fanController.Override(nil)
+	log.FromContext(ctx).Info("Critical state cleared, restoring fan speed and LEDs")
+	// The fan controller picks up the regular fan speed (or the override set via the API) on its next run
 
 	// Reset stealth mode
 	if err := a.blade.SetStealthMode(a.config.StealthModeEnabled); err != nil {

@@ -141,7 +141,7 @@ func (a *computeBladeAgent) GetStatus(_ context.Context, _ *emptypb.Empty) (*bla
 		CriticalActive:               a.state.CriticalActive(),
 		Temperature:                  int64(temp),
 		FanRpm:                       int64(rpm),
-		FanPercent:                   uint32(a.fanController.GetFanSpeedPercent(temp)),
+		FanPercent:                   uint32(a.fanSpeedPercent(temp)),
 		FanSpeedAutomatic:            a.fanController.IsAutomaticSpeed(),
 		PowerStatus:                  bladeapiv1alpha1.PowerStatus(powerStatus),
 		FanCurveSteps:                fanCurveSteps,
