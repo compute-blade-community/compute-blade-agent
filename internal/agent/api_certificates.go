@@ -8,22 +8,18 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/compute-blade-community/compute-blade-agent/cmd/bladectl/config"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/certificate"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/util"
 	"github.com/sierrasoftworks/humane-errors-go"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 )
 
 const certDir = "/etc/compute-blade-agent"
@@ -67,154 +63,6 @@ func GenerateClientCert(commonName string) (caPEM, certPEM, keyPEM []byte, herr 
 	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 
 	return caPEM, certPEM, keyPEM, nil
-}
-
-func EnsureAuthenticatedBladectlConfig(ctx context.Context, serverAddr string, serverMode ListenMode) humane.Error {
-	configDir, herr := config.EnsureBladectlConfigHome()
-	if herr != nil {
-		return herr
-	}
-
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	if util.FileExists(configPath) {
-		// Load and decode bladectl config
-		configBytes, err := os.ReadFile(configPath)
-		if err != nil {
-			return humane.Wrap(err, "failed to read bladectl config",
-				fmt.Sprintf("ensure the config file %s exists and is readable by the agent user", configPath),
-			)
-		}
-
-		var bladectlConfig config.BladectlConfig
-		if err := yaml.Unmarshal(configBytes, &bladectlConfig); err != nil {
-			return humane.Wrap(err, "failed to parse bladectl config",
-				"this should never happen",
-				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
-				"ensure your config file is valid YAML",
-			)
-		}
-
-		blade, herr := bladectlConfig.FindBlade("")
-		if herr != nil {
-			return herr
-		}
-
-		certPEM, err := base64.StdEncoding.DecodeString(blade.Blade.Certificate.ClientCertificateData)
-		if err != nil {
-			return humane.Wrap(err, fmt.Sprintf("failed to decode client certificate data for blade %s", blade.Name),
-				"this should never happen",
-				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
-				"ensure your config file is valid YAML",
-			)
-		}
-
-		keyPEM, err := base64.StdEncoding.DecodeString(blade.Blade.Certificate.ClientKeyData)
-		if err != nil {
-			return humane.Wrap(err, fmt.Sprintf("failed to decode client certificate key data for blade %s", blade.Name),
-				"this should never happen",
-				"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
-				"ensure your config file is valid YAML",
-			)
-		}
-
-		if _, _, err := certificate.ValidateCertificate(certPEM, keyPEM); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	// Generate localhost keys
-	log.FromContext(ctx).Debug("Generating new local client certificate...")
-
-	caPEM, clientCertDER, clientKeyDER, herr := GenerateClientCert("localhost")
-	if herr != nil {
-		return herr
-	}
-
-	if serverMode == ModeTcp {
-		_, grpcApiPort, err := net.SplitHostPort(serverAddr)
-		if err != nil {
-			return humane.Wrap(err, "failed to extract port from gRPC address",
-				"check your gRPC address is correct in your agent config",
-			)
-		}
-
-		serverAddr = fmt.Sprintf("localhost:%s", grpcApiPort)
-	}
-
-	bladectlConfig := config.NewAuthenticatedBladectlConfig(serverAddr, caPEM, clientCertDER, clientKeyDER)
-	data, err := yaml.Marshal(&bladectlConfig)
-	if err != nil {
-		return humane.Wrap(err, "Failed to marshal YAML config",
-			"this should never happen",
-			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
-		)
-	}
-
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		return humane.Wrap(err, "Failed to write bladectl config file",
-			"ensure the home-directory is writable by the agent user",
-		)
-	}
-
-	log.FromContext(ctx).Info("Generated new local bladectl config",
-		zap.String("path", configPath),
-		zap.String("server", serverAddr),
-		zap.Bool("authenticated", true),
-	)
-
-	return nil
-}
-
-func EnsureUnauthenticatedBladectlConfig(ctx context.Context, serverAddr string, serverMode ListenMode) humane.Error {
-	configDir, herr := config.EnsureBladectlConfigHome()
-	if herr != nil {
-		return herr
-	}
-
-	configPath := filepath.Join(configDir, "config.yaml")
-	if util.FileExists(configPath) {
-		return nil
-	}
-
-	// Generate localhost keys
-	log.FromContext(ctx).Debug("Generating new local bladectl config...")
-
-	if serverMode == ModeTcp {
-		_, grpcApiPort, err := net.SplitHostPort(serverAddr)
-		if err != nil {
-			return humane.Wrap(err, "failed to extract port from gRPC address",
-				"check your gRPC address is correct in your agent config",
-			)
-		}
-
-		serverAddr = fmt.Sprintf("localhost:%s", grpcApiPort)
-	}
-
-	bladectlConfig := config.NewBladectlConfig(serverAddr)
-	data, err := yaml.Marshal(&bladectlConfig)
-	if err != nil {
-		return humane.Wrap(err, "Failed to marshal YAML config",
-			"this should never happen",
-			"please report this as a bug to https://github.com/compute-blade-community/compute-blade-agent/issues",
-		)
-	}
-
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		return humane.Wrap(err, "Failed to write bladectl config file",
-			"ensure the home-directory is writable by the agent user",
-		)
-	}
-
-	log.FromContext(ctx).Info("Generated new local bladectl config",
-		zap.String("path", configPath),
-		zap.String("server", serverAddr),
-		zap.Bool("authenticated", false),
-	)
-
-	return nil
 }
 
 // EnsureServerCertificate ensures the presence of a valid server certificate and CA, generating them if necessary.

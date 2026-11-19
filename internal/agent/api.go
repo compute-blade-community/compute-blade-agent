@@ -31,14 +31,11 @@ func (a *computeBladeAgent) setupGrpcServer(ctx context.Context) error {
 			return err
 		}
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
+	}
 
-		if err := EnsureAuthenticatedBladectlConfig(ctx, a.config.Listen.Grpc, listenMode); err != nil {
-			return err
-		}
-	} else {
-		if err := EnsureUnauthenticatedBladectlConfig(ctx, a.config.Listen.Grpc, listenMode); err != nil {
-			return err
-		}
+	authenticated := listenMode == ModeTcp && a.config.Listen.GrpcAuthenticated
+	if err := EnsureLocalBladectlConfig(ctx, a.config.Listen.Grpc, listenMode, authenticated); err != nil {
+		return err
 	}
 
 	logger := log.InterceptorLogger(otelzap.L())
