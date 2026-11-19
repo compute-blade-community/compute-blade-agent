@@ -26,12 +26,12 @@ jobs:
       contents: read
 
     steps:
-      - uses: amannn/action-semantic-pull-request@v6
+      - uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6
         id: lint_pr_title
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: marocchino/sticky-pull-request-comment@v3.0.5
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         # When the previous steps fail, the workflow would stop. By adding this
         # condition you can continue the execution with the populated error message.
         if: always() && (steps.lint_pr_title.outputs.error_message != null)
@@ -50,7 +50,7 @@ jobs:
 
       # Delete a previous comment when the issue has been resolved
       - if: ${{ steps.lint_pr_title.outputs.error_message == null }}
-        uses: marocchino/sticky-pull-request-comment@v3.0.5
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: pr-title-lint-error
           delete: true
@@ -64,7 +64,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/labeler@v7
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7
         id: labeler
         with:
           sync-labels: true

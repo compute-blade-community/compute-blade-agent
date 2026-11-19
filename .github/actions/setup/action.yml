@@ -15,9 +15,9 @@ runs:
   steps:
     # Installs and caches mise and every tool in mise.toml; the cache key covers mise.toml
     - name: Install mise and the pinned tools
-      uses: jdx/mise-action@v5
+      uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5
       with:
-        version: 2026.9.9
+        version: 2026.11.9
         cache: true
 
     - name: Locate the Go caches
@@ -30,7 +30,7 @@ runs:
     # Keyed by commit so every run saves an up to date build cache; restores fall back to the newest cache for the
     # same dependencies, then to the newest cache of this job at all.
     - name: Restore the build caches
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: |
           ${{ steps.go-env.outputs.modcache }}
