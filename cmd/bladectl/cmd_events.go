@@ -124,7 +124,8 @@ func (p *eventPrinter) print(name string, event *bladeapiv1alpha1.AgentEvent) {
 	defer p.mu.Unlock()
 
 	if p.json {
-		raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(event)
+		// EmitDefaultValues keeps the event field for IDENTIFY, which is the enum's zero value
+		raw, err := protojson.MarshalOptions{UseProtoNames: true, EmitDefaultValues: true}.Marshal(event)
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "%s: failed to marshal event: %v\n", name, err)
 			return
