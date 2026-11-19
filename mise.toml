@@ -4,4 +4,92 @@ buf = "1.75.0"
 go = "1.27.4"
 golangci-lint = "2.15.0"
 goreleaser = "2.20.2"
+protoc-gen-go = "1.31.0"
+protoc-gen-go-grpc = "1.3.0"
+shellcheck = "0.11.0"
 tinygo = "0.44.0"
+
+# Tasks. CI runs exactly these, so `mise run <task>` locally does what the pipeline does.
+# `mise tasks` lists them.
+
+[tasks.fmt]
+description = "Format all Go code"
+run = "gofmt -w ."
+
+[tasks."fmt:check"]
+description = "Fail if any Go file isn't gofmt-formatted"
+run = '''
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+  echo "These files are not formatted, run 'mise run fmt':"
+  echo "$unformatted"
+  exit 1
+fi
+'''
+
+[tasks.lint]
+description = "Run golangci-lint for the release target (linux/arm64), on any machine"
+env = { GOOS = "linux", GOARCH = "arm64" }
+run = "golangci-lint run"
+
+[tasks.actionlint]
+description = "Lint the GitHub Actions workflows"
+run = "actionlint"
+
+[tasks.test]
+description = "Run the unit tests with coverage (writes coverage.txt)"
+run = "go test -cover -coverprofile=coverage.txt ./..."
+
+[tasks.fuzz]
+description = "Run the fuzz tests for 5s per target"
+run = '''
+for target in ./pkg/smartfanunit/proto; do
+  go test -fuzz=Fuzz -fuzztime=5s -fuzzminimizetime=10s "$target"
+done
+'''
+
+[tasks.generate]
+description = "Generate the gRPC code from api/**/*.proto"
+run = "buf generate"
+
+[tasks."generate:check"]
+description = "Fail if the generated gRPC code is out of date"
+depends = ["generate"]
+run = '''
+if ! git diff --exit-code -- api/; then
+  echo "The generated code in api/ is out of date, run 'mise run generate' and commit the result."
+  exit 1
+fi
+'''
+
+[tasks."build:fanunit"]
+description = "Build the smart fan unit firmware (fanunit.uf2)"
+sources = ["go.mod", "go.sum", "cmd/fanunit/**/*.go", "pkg/**/*.go"]
+outputs = ["fanunit.uf2"]
+run = "tinygo build -target=pico -o fanunit.uf2 ./cmd/fanunit/"
+
+[tasks.build]
+description = "Build the agent and bladectl for all release targets into dist/"
+run = "goreleaser build --snapshot --clean"
+
+[tasks.snapshot]
+description = "Build all release artifacts (packages, images) without publishing. Needs Docker; pass -- --skip=docker without it"
+depends = ["build:fanunit"]
+run = "goreleaser release --snapshot --clean --skip=sign"
+
+[tasks.release]
+description = "Publish a release (CI only: needs the release tag, GITHUB_TOKEN, cosign and registry credentials)"
+depends = ["build:fanunit"]
+run = "goreleaser release --clean"
+
+[tasks.run]
+description = "Run the agent (needs a supported blade or macOS for the simulated HAL)"
+run = "go run ./cmd/agent"
+
+[tasks.ci]
+description = "Run every check of the CI pipeline"
+# generate:check rewrites api/ first, the checks reading the code run in parallel afterwards
+run = [
+  "mise run generate:check",
+  "mise run fmt:check ::: lint ::: actionlint ::: test ::: build:fanunit",
+]

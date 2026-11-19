@@ -1,0 +1,43 @@
+name: Set up the toolchain
+description: >-
+  Installs the tools pinned in mise.toml and restores the Go module, Go build, golangci-lint and TinyGo caches.
+  Jobs then run `mise run <task>`, the same commands as a local build.
+
+inputs:
+  cache-name:
+    description: >-
+      Name of the build cache. Jobs that compile different things (lint, tests, firmware, release builds) keep
+      separate caches so they don't evict each other's entries.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Installs and caches mise and every tool in mise.toml; the cache key covers mise.toml
+    - name: Install mise and the pinned tools
+      uses: jdx/mise-action@v5
+      with:
+        version: 2026.9.9
+        cache: true
+
+    - name: Locate the Go caches
+      id: go-env
+      shell: bash
+      run: |
+        echo "modcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "buildcache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+
+    # Keyed by commit so every run saves an up to date build cache; restores fall back to the newest cache for the
+    # same dependencies, then to the newest cache of this job at all.
+    - name: Restore the build caches
+      uses: actions/cache@v6
+      with:
+        path: |
+          ${{ steps.go-env.outputs.modcache }}
+          ${{ steps.go-env.outputs.buildcache }}
+          ~/.cache/golangci-lint
+          ~/.cache/tinygo
+        key: build-${{ runner.os }}-${{ inputs.cache-name }}-${{ hashFiles('mise.toml', '**/go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          build-${{ runner.os }}-${{ inputs.cache-name }}-${{ hashFiles('mise.toml', '**/go.sum') }}-
+          build-${{ runner.os }}-${{ inputs.cache-name }}-

@@ -16,56 +16,55 @@ on:
     branches:
       - main
 
+# A newer push to the same branch or PR makes older runs pointless
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Every step runs a mise task from mise.toml, so `mise run <task>` reproduces it locally (`mise run ci` runs all
+# checks at once).
 jobs:
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout code
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Set up Go environment
-      - name: Setup Go
-        uses: actions/setup-go@v7
+      - name: Set up the toolchain
+        uses: ./.github/actions/setup
         with:
-          go-version-file: "go.mod"
-          cache-dependency-path: "**/*.sum"
-          cache: true
+          cache-name: quality
 
-      - name: GolangCI Lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: latest
+      - name: Check formatting
+        run: mise run fmt:check
 
-      - name: Run format-check
-        run: |
-          UNFORMATTED=$(gofmt -l .)
-          if [ -n "$UNFORMATTED" ]; then
-            echo "The following files are not formatted according to gofmt:"
-            echo "$UNFORMATTED"
-            exit 1
-          fi
+      - name: Check the generated code
+        run: mise run generate:check
+
+      - name: Lint Go code
+        run: mise run lint
+
+      - name: Lint workflows
+        run: mise run actionlint
 
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      # Checkout code
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Set up Go environment
-      - name: Setup Go
-        uses: actions/setup-go@v7
+      - name: Set up the toolchain
+        uses: ./.github/actions/setup
         with:
-          go-version-file: "go.mod"
-          cache: true
-          cache-dependency-path: "**/*.sum"
+          cache-name: test
 
       - name: Run tests
-        run: go test -cover -coverprofile=coverage.txt ./...
+        run: mise run test
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v7
@@ -93,7 +92,8 @@ jobs:
           coverage-file-name: "coverage.txt"
           github-baseline-workflow-ref: "release.yaml"
 
-  tinygo:
+  snapshot:
+    name: Build release artifacts
     runs-on: ubuntu-latest
     needs:
       - test
@@ -105,74 +105,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Set up the toolchain
+        uses: ./.github/actions/setup
         with:
-          go-version-file: "go.mod"
-          cache-dependency-path: "**/*.sum"
-          cache: true
+          cache-name: release
 
-      # Setup tinygo
-      - uses: acifani/setup-tinygo@v3
-        with:
-          tinygo-version: "0.44.0"
-
-      # Build fanunit firmware
-      - name: Build FanUnit Firmware
-        run: make build-fanunit
-
-      - name: Archive FanUnit Firmware
-        uses: actions/upload-artifact@v7
-        with:
-          name: fanunit.uf2
-          path: "fanunit.uf2"
-
-  goreleaser:
-    runs-on: ubuntu-latest
-    needs:
-      - tinygo
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      # Install cosign
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.3
-        with:
-          cosign-release: v3.1.4
-
-      # Install GoLang
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: "go.mod"
-          cache-dependency-path: "**/*.sum"
-          cache: true
-
-      # Setup docker buildx
+      # goreleaser builds the container image for arm64
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # Download FanUnit Firmware
-      - name: Download fanunit firmware
-        uses: actions/download-artifact@v8
-        with:
-          pattern: fanunit.uf2
-
-      # Run goreleaser
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          version: latest
-          args: release --snapshot --clean --skip sign
+      # Builds the fan unit firmware first (a dependency of the snapshot task), then every package and image
+      - name: Build release artifacts
+        run: mise run snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Archive FanUnit Firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: fanunit.uf2
+          path: "fanunit.uf2"
+          if-no-files-found: error
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7

@@ -1,40 +1,19 @@
-FUZZ_TARGETS := ./pkg/smartfanunit/proto
+# Deprecated: the build tasks moved to mise.toml, run `mise tasks` to list them.
+# These targets only forward to mise and will be removed in a future release.
 
-all: lint test
+define deprecated
+	@echo "warning: 'make $@' is deprecated, use 'mise run $(1)'" >&2
+	@mise run $(1)
+endef
 
-.PHONY: run
-run:
-	go run cmd/agent/main.go
+all: ; $(call deprecated,ci)
 
-.PHONY: lint
-lint:
-	golangci-lint run
-
-.PHONY: test
-test:
-	go test ./... -v
-
-
-.PHONY: fuzz
-fuzz:
-	@for target in $(FUZZ_TARGETS); do \
-		go test  -fuzz="Fuzz" -fuzztime=5s -fuzzminimizetime=10s  $$target; \
-	done
-
-
-# buf is pinned in mise.toml
-.PHONY: generate
-generate:
-	buf generate
-
-.PHONY: build-fanunit
-build-fanunit:
-	tinygo build -target=pico -o fanunit.uf2 ./cmd/fanunit/
-
-.PHONY: build-agent
-build-agent: generate
-	goreleaser build --snapshot --clean
-
-.PHONY: snapshot
-snapshot:
-	goreleaser release --snapshot --skip=publish --clean
+.PHONY: run lint test fuzz generate build-fanunit build-agent snapshot
+run: ; $(call deprecated,run)
+lint: ; $(call deprecated,lint)
+test: ; $(call deprecated,test)
+fuzz: ; $(call deprecated,fuzz)
+generate: ; $(call deprecated,generate)
+build-fanunit: ; $(call deprecated,build:fanunit)
+build-agent: ; $(call deprecated,build)
+snapshot: ; $(call deprecated,snapshot)
