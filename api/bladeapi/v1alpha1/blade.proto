@@ -98,7 +98,7 @@ message FanDetails {
   // Fan speed commanded by the agent, in percent.
   uint32 target_percent = 1;
   // Fan speed measured by the tachometer.
-  int64 rpm = 2;
+  uint32 rpm = 2;
 }
 
 service BladeAgentService {

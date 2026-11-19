@@ -67,7 +67,7 @@ func toProtoEvent(msg events.Message, blade string) (*bladeapiv1alpha1.AgentEven
 	case events.FanDetails:
 		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Fan{Fan: &bladeapiv1alpha1.FanDetails{
 			TargetPercent: uint32(details.TargetPercent),
-			Rpm:           int64(details.RPM),
+			Rpm:           uint32(max(details.RPM, 0)),
 		}}
 	}
 
