@@ -72,3 +72,21 @@ func TestUnsubscribe(t *testing.T) {
 	assert.False(t, ok, "Unsubscribed channel should be closed")
 
 }
+
+func TestEventBusPublishAfterUnsubscribe(t *testing.T) {
+	t.Parallel()
+
+	eb := events.New()
+	sub0 := eb.Subscribe("topic", 1, events.MatchAll)
+	sub1 := eb.Subscribe("topic", 1, events.MatchAll)
+
+	sub0.Unsubscribe()
+	sub0.Unsubscribe() // must not panic
+
+	// Publishing twice exercises the cleanup of the closed subscriber; a leaked lock would deadlock here.
+	eb.Publish("topic", 1)
+	eb.Publish("topic", 2)
+
+	assert.Equal(t, 1, <-sub1.C())
+	sub1.Unsubscribe()
+}

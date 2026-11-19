@@ -32,7 +32,22 @@ The _identify_ function can be triggered via `bladectl` or a physical button pre
 bladectl set identify --wait    # Blink LED until button is pressed
 bladectl set identify --confirm # Cancel identification
 bladectl unset identify         # Cancel identification (alternative)
+bladectl events --all           # Stream events (button presses, critical mode, ...) from all blades
 ```
+
+### Event stream
+
+The agent publishes every event it handles (button presses, identify, critical mode, ...) through the
+`WatchEvents` server-streaming gRPC call. Operators, scripts and other agents can subscribe to it to react to what
+happens on a blade. `bladectl events` is a ready-made client:
+
+```bash
+bladectl events                                    # human-readable, one line per event
+bladectl events --event critical --event critical_reset
+bladectl events -o json | jq .                     # one JSON object per line
+```
+
+Delivery is best-effort: a subscriber that falls more than 64 events behind misses events.
 
 ### `fanunit.uf2`: Smart Fan Unit Firmware
 

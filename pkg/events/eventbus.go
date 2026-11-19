@@ -52,6 +52,7 @@ func (eb *eventBus) Publish(topic string, message any) {
 			sub.mu.Lock()
 			// Clean up closed subscribers
 			if sub.closed {
+				sub.mu.Unlock()
 				delete(eb.subscribers[topic], sub)
 				continue
 			}
@@ -97,6 +98,9 @@ func (s *subscriber) C() <-chan any {
 func (s *subscriber) Unsubscribe() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
 	close(s.ch)
 	s.closed = true
 }
