@@ -241,12 +241,21 @@ func (a *computeBladeAgent) runFanController(ctx context.Context, cancel context
 			a.evaluateCriticalTemperature(ctx, temp)
 		}
 		// Derive fan speed from temperature
-		speed := a.fanController.GetFanSpeedPercent(temp)
+		speed := a.fanSpeedPercent(temp)
 		// Set fan speed
 		if err := a.blade.SetFanSpeed(speed); err != nil {
 			log.FromContext(ctx).WithError(err).Error("Failed to set fan speed")
 		}
 	}
+}
+
+// fanSpeedPercent is the fan speed for the given temperature: the fan curve or the override set via the API, and
+// full speed while critical mode is active.
+func (a *computeBladeAgent) fanSpeedPercent(temp float64) uint8 {
+	if a.state.CriticalActive() {
+		return 100
+	}
+	return a.fanController.GetFanSpeedPercent(temp)
 }
 
 // evaluateCriticalTemperature raises critical mode when the SoC temperature reaches the configured threshold and
