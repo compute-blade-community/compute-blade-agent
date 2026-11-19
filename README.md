@@ -2,211 +2,46 @@
 
 > :warning: **Beta Release**: This software is currently in beta, and both configurations and APIs may undergo breaking changes. It is not yet 100% feature complete, but it functions as intended.
 
-## Quick Start
+The compute-blade-agent runs on every [Compute Blade](https://computeblade.com) and takes care of the hardware:
 
-Install the agent with the one-liner below:
+- drives the fan along a temperature curve and enters **critical mode** (fan at 100%, red LED) when the SoC overheats
+- detects **stalled fans**, **under-voltage** and **CPU throttling**, and shows them on the LEDs
+- turns the edge button into **gestures** (single, double, multi-press, long press) that run built-in actions or your
+  own commands
+- optionally **limits the CPU** when the blade runs on 802.3af PoE or gets too little power
+- publishes everything as an **event stream**, serves a **gRPC API** with mutual TLS and exports **Prometheus
+  metrics**
+- announces itself via **mDNS**, so `bladectl discover` finds your blades
 
-```bash
-curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/compute-blade-community/compute-blade-agent/main/hack/autoinstall.sh
-chmod +x /tmp/compute-blade-agent-installer.sh
-/tmp/compute-blade-agent-installer.sh
-```
+`bladectl` is the command line client. `fanunit.uf2` is the firmware for the smart fan unit.
 
-## Components
+## Quick start
 
-### `compute-blade-agent`: Hardware Interaction & Monitoring
-
-The agent runs as a system service and monitors various hardware states and events:
-
-- Reacts to button presses and SoC temperature.
-- Automatically enters **critical mode** (fan 100%, red LED) when overheating.
-- Exposes system metrics via a Prometheus endpoint (`/metrics`).
-
-It also watches the blade's health and raises **health conditions**, each shown as a configurable LED indicator,
-published as an event and reported by `bladectl get status`:
-
-| Condition   | Raised when                                                                    | Default indicator           |
-|-------------|--------------------------------------------------------------------------------|-----------------------------|
-| `fan_stall` | the fan is commanded to ≥20% but reports <100 RPM for 15s (needs RPM reporting) | top LED, fast-blink, orange |
-| `undervoltage` | the Raspberry Pi firmware reports under-voltage (e.g. PoE budget exhausted) | top LED, burst, amber |
-| `throttled` | the CPU frequency is capped, throttled or at the soft temperature limit | none |
-
-Under-voltage and throttling clear once the flags stayed off for 30s. The raw firmware flags are also exported as
-`computeblade_throttle_active` and `computeblade_throttle_occurred` (since boot).
-
-Indicators share the LEDs by priority, so identify (edge LED) and critical mode (top LED) always win and the
-indicator shows up again once they are cleared. See `health` and `indicators` in the default configuration.
-
-### Button gestures
-
-The edge button recognises gestures: a `single` press, a `double` press, a `multi_press` series and a `long_press`.
-Each gesture can run a built-in action (`identify-toggle`, `shutdown`, `reboot`, `emergency-poweroff`, `none`) or any
-command:
-
-```yaml
-button:
-  single:      { action: identify-toggle }   # default
-  double:      { exec: ["/usr/local/bin/drain-node.sh"], timeout: 2m }
-  long_press:  { hold: 5s, action: shutdown }
-  multi_press: { count: 5, action: emergency-poweroff }
-```
-
-Commands run without a shell and get `BLADE_GESTURE`, `BLADE_PRESS_COUNT`, `BLADE_HOLD_MS` and `BLADE_HOSTNAME` in
-their environment. While the button is held towards a bound long press, the edge LED blinks white. Every gesture is
-published as a `button_gesture` event, so tools watching the event stream can bind their own behaviour to gestures the
-agent leaves unbound.
-
-`emergency-poweroff` powers off immediately without stopping services or unmounting file systems, for blades whose
-shutdown hangs. File systems may need repair on the next boot.
-
-### Power policy
-
-When a blade is short on power, the agent can limit the CPU so it stays within its power budget instead of browning
-out under load. Limits are configured per reason in `power_policy` and are off by default:
-
-```yaml
-power_policy:
-  limited_power:         # not on 802.3at PoE+ (i.e. 802.3af PoE or USB-C)
-    governor: powersave
-  undervoltage:          # while the undervoltage condition is raised
-    max_freq_mhz: 1200
-```
-
-The agent publishes `power_limit` / `power_limit_clear` events, exports `computeblade_power_limit_active{reason}`
-and restores the original cpufreq settings when the limit is lifted or the agent stops.
-
-The _identify_ function can be triggered via `bladectl` or a physical button press. It makes the edge LED blink to assist locating a blade in a rack.
-
-### `bladectl`: User Command-Line Tool
-
-`bladectl` is a CLI utility for remote or local interaction with the running agent. Example use cases:
-
-```bash
-bladectl set identify --wait    # Blink LED until button is pressed
-bladectl set identify --confirm # Cancel identification
-bladectl unset identify         # Cancel identification (alternative)
-bladectl events --all           # Stream events (button presses, critical mode, ...) from all blades
-```
-
-### Event stream
-
-The agent publishes every event it handles (button presses, identify, critical mode, ...) through the
-`WatchEvents` server-streaming gRPC call. Operators, scripts and other agents can subscribe to it to react to what
-happens on a blade. `bladectl events` is a ready-made client:
-
-```bash
-bladectl events                                    # human-readable, one line per event
-bladectl events --event critical --event critical_reset
-bladectl events -o json | jq .                     # one JSON object per line
-```
-
-Delivery is best-effort: a subscriber that falls more than 64 events behind misses events.
-
-### `fanunit.uf2`: Smart Fan Unit Firmware
-
-This firmware runs on the fan unit microcontroller and:
-
-- Controls fan speed via UART commands from blade agents.
-- Reports RPM and airflow temperature back to the blade.
-- Forwards button events (1x = left blade, 2x = right blade).
-- Uses EMC2101 for optional advanced features like airflow-based fan control.
-
-To install it, [download the `fanunit.uf2`](https://github.com/compute-blade-community/compute-blade-agent/releases/latest), and follow the firmware upgrade instructions [here](https://docs.computeblade.com/fan-unit/uart#update-firmware).
-
-## Installation
-
-Install the agent with the one-liner below:
+On the blade:
 
 ```bash
 curl -L -o /tmp/compute-blade-agent-installer.sh https://raw.githubusercontent.com/compute-blade-community/compute-blade-agent/main/hack/autoinstall.sh
 chmod +x /tmp/compute-blade-agent-installer.sh
 /tmp/compute-blade-agent-installer.sh
+
+sudo bladectl get status
+sudo bladectl set identify --wait   # the edge LED blinks until you press the edge button
 ```
 
-> Note: `bladectl` requires root privileges when used locally, due to restricted access to the Unix socket (`/tmp/compute-blade-agent.sock`).
+## Documentation
 
-## Configuration
+The [documentation](docs/README.md) has tutorials, how-to guides, reference and background:
 
-The default configuration file is located at:
+- [Set up your first blade](docs/tutorials/first-blade.md)
+- [Manage a rack from your workstation](docs/tutorials/manage-a-rack.md)
+- [Configuration file reference](docs/reference/configuration.md)
+- [bladectl reference](docs/reference/bladectl.md)
+- [Bind actions to button gestures](docs/how-to/button-gestures.md)
+- [Monitor blades with Prometheus](docs/how-to/prometheus-monitoring.md)
+- [Troubleshooting](docs/how-to/troubleshooting.md)
 
-```bash
-/etc/compute-blade-agent/config.yaml
-```
+## Contributing
 
-You can also override any config option via environment variables using the `BLADE_` prefix.
-
-### Examples
-
-#### YAML:
-```yaml
-listen:
-  metrics: ":9666"
-```
-
-#### Environment variable override:
-
-```bash
-BLADE_LISTEN_METRICS=":1234"
-```
-
-### Common Overrides
-
-| Variable                                          | Description                              |
-|---------------------------------------------------|------------------------------------------|
-| `BLADE_STEALTH_MODE=false`                        | Enable/disable stealth mode              |
-| `BLADE_FAN_SPEED_PERCENT=80`                      | Set static fan speed                     |
-| `BLADE_CRITICAL_TEMPERATURE_THRESHOLD=60`         | Set critical temp threshold (°C)         |
-| `BLADE_HAL_RPM_REPORTING_STANDARD_FAN_UNIT=false` | Disable RPM monitoring for lower CPU use |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`                     | Endpoint for the OTLP exporter           |
-
-## Exposing the gRPC API for Remote Access
-
-To allow secure remote use of `bladectl` over the network:
-
-### 1. Update your config (`/etc/compute-blade-agent/config.yaml`):
-
-```yaml
-listen:
-  metrics: ":9666"
-  grpc: ":8081"
-  authenticated: true
-  mode: tcp
-```
-
-### 2. Restart the agent:
-
-```bash
-systemctl restart compute-blade-agent
-```
-
-This will:
-
-- Generate new mTLS server and client certificates in `/etc/compute-blade-agent/*.pem`
-- Write a new bladectl config to: `~/.config/bladectl/config.yaml` with the client certificates in place
-
-## Using `bladectl` from your local machine
-
-1. Copy the config from the blade:
-
-```bash
-scp root@blade-pi1:~/.config/bladectl/config.yaml ~/.config/bladectl/config.yaml
-```
-
-2. Point the server address to the blade. Agents listening on TCP announce themselves via mDNS
-   (`_compute-blade._tcp`, registered with avahi-daemon if it runs), so `bladectl discover --save` finds them and updates
-   the address of every configured blade. Addresses that still reach the blade (e.g. `blade-pi1:8081` instead of
-   `blade-pi1.local:8081`, or one of its IP addresses) are kept:
-
-```bash
-bladectl discover          # list blades on the network
-bladectl discover --save   # update the addresses in ~/.config/bladectl/config.yaml
-```
-
-   Blades without authentication are added automatically. Blades requiring mTLS have to be in the config already
-   (step 1), because their client certificate can't be fetched over the network. Without mDNS, set the address by hand:
-
-```bash
-yq e '.blades[] | select(.name == "blade-pi1") .blade.server = "blade-pi1.local:8081"' -i ~/.config/bladectl/config.yaml
-```
-
-Your `bladectl` tool can now securely talk to the remote agent via gRPC over mTLS.
+The toolchain and all build tasks are pinned in `mise.toml`. `mise install` sets you up and `mise run ci` runs every
+check the CI pipeline runs. Start with [Make your first change to the agent](docs/tutorials/first-change.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
