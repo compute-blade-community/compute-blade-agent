@@ -90,3 +90,5 @@ func TestToProtoEvent_ThrottleDetails(t *testing.T) {
 	assert.False(t, details.GetThrottled(), "occurred-since-boot bit must not count as currently throttled")
 	assert.False(t, details.GetArmFreqCapped())
 }
+
+var timeZero = time.Unix(0, 0)

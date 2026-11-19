@@ -83,6 +83,9 @@ type computeBladeAgent struct {
 	// Only accessed from the health monitor goroutine.
 	undervoltageDetector *health.FlagDetector
 	throttlingDetector   *health.FlagDetector
+
+	// powerPolicy limits the CPU while the blade is short on power. Nil if not configured.
+	powerPolicy *powerPolicy
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
@@ -126,6 +129,10 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 
 	a.setupFanStallDetection(ctx)
 	a.setupThrottleDetection()
+
+	if err := a.setupPowerPolicy(ctx); err != nil {
+		return nil, err
+	}
 
 	if err := a.setupGrpcServer(ctx); err != nil {
 		return nil, err
@@ -201,6 +208,11 @@ func (a *computeBladeAgent) GracefulStop(ctx context.Context) error {
 	a.server.GracefulStop()
 
 	log.FromContext(ctx).Info("Exiting, restoring safe settings")
+	if a.powerPolicy != nil {
+		if err := a.powerPolicy.stop(); err != nil {
+			log.FromContext(ctx).WithError(err).Error("Failed to restore original CPU settings")
+		}
+	}
 	if err := a.blade.SetFanSpeed(100); err != nil {
 		log.FromContext(ctx).WithError(err).Error("Failed to set fan speed to 100%")
 	}

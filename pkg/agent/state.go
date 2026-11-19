@@ -75,7 +75,7 @@ func (s *computebladeStateImpl) RegisterEvent(event events.Event) {
 		close(s.criticalConfirmChan)
 		s.criticalConfirmChan = make(chan struct{})
 
-	case events.NoopEvent, events.EdgeButtonEvent:
+	case events.NoopEvent, events.EdgeButtonEvent, events.PowerLimitEvent, events.PowerLimitClearEvent:
 	default:
 		if _, _, ok := event.ConditionChange(); !ok {
 			otelzap.L().Warn("Unknown event", zap.String("event", event.String()))

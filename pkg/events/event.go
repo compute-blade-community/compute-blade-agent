@@ -17,6 +17,8 @@ const (
 	UndervoltageClearEvent
 	ThrottledEvent
 	ThrottledClearEvent
+	PowerLimitEvent
+	PowerLimitClearEvent
 )
 
 // Health conditions. A condition is raised and cleared by a pair of events (see Event.ConditionChange).
@@ -59,6 +61,10 @@ func (e Event) String() string {
 		return "throttled"
 	case ThrottledClearEvent:
 		return "throttled_clear"
+	case PowerLimitEvent:
+		return "power_limit"
+	case PowerLimitClearEvent:
+		return "power_limit_clear"
 	default:
 		return "unknown"
 	}
@@ -96,6 +102,16 @@ type FanDetails struct {
 type ThrottleDetails struct {
 	// Flags is the raw Raspberry Pi firmware throttle bitfield (see hal.ThrottleStatus)
 	Flags uint32
+}
+
+// PowerLimitDetails are attached to power limit events.
+type PowerLimitDetails struct {
+	// Reasons why the CPU is limited, e.g. "undervoltage", "limited_power". Empty when the limit was lifted.
+	Reasons []string
+	// Governor is the cpufreq governor in use because of the limit, if the policy sets one
+	Governor string
+	// MaxFreqMHz is the CPU frequency cap, 0 if the policy sets none
+	MaxFreqMHz uint
 }
 
 // Message is an Event together with the time it occurred and optional, event-specific details.

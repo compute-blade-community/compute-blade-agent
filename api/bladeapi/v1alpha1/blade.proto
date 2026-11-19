@@ -30,6 +30,10 @@ enum Event {
   THROTTLED = 9;
   // The CPU is no longer throttled. Published only, carries ThrottleDetails.
   THROTTLED_CLEAR = 10;
+  // The power policy limited the CPU, or changed the limit. Published only, carries PowerLimitDetails.
+  POWER_LIMIT = 11;
+  // The power policy lifted all CPU limits. Published only, carries PowerLimitDetails.
+  POWER_LIMIT_CLEAR = 12;
 }
 
 // FanUnit defines the fan unit detected by the blade
@@ -100,7 +104,18 @@ message AgentEvent {
   oneof details {
     FanDetails fan = 10;
     ThrottleDetails throttle = 11;
+    PowerLimitDetails power_limit = 12;
   }
+}
+
+// PowerLimitDetails are attached to POWER_LIMIT and POWER_LIMIT_CLEAR events.
+message PowerLimitDetails {
+  // Why the CPU is limited: "undervoltage" and/or "limited_power". Empty when the limit was lifted.
+  repeated string reasons = 1;
+  // cpufreq governor in use because of the limit, empty if the policy doesn't set one.
+  string governor = 2;
+  // CPU frequency cap in MHz, 0 if the policy doesn't set one.
+  uint32 max_freq_mhz = 3;
 }
 
 // ThrottleDetails are attached to UNDERVOLTAGE(_CLEAR) and THROTTLED(_CLEAR) events.

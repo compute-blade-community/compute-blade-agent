@@ -59,6 +59,26 @@ type ComputeBladeAgentConfig struct {
 
 	// Indicators configures how health conditions are shown on the LEDs, keyed by condition name (e.g. fan_stall)
 	Indicators map[string]IndicatorConfig `mapstructure:"indicators"`
+
+	// PowerPolicy limits the CPU when the blade is short on power
+	PowerPolicy PowerPolicyConfig `mapstructure:"power_policy"`
+}
+
+// PowerPolicyConfig defines CPU limits applied while the blade is short on power. If several apply at once, the
+// lowest frequency cap wins and the under-voltage governor takes precedence.
+type PowerPolicyConfig struct {
+	// LimitedPower applies while the blade is not powered by 802.3at PoE+ (i.e. 802.3af PoE or USB-C)
+	LimitedPower CPULimitsConfig `mapstructure:"limited_power"`
+	// Undervoltage applies while the under-voltage condition is raised (requires health.undervoltage.enabled)
+	Undervoltage CPULimitsConfig `mapstructure:"undervoltage"`
+}
+
+// CPULimitsConfig restricts the CPU. Empty / zero fields leave the respective setting untouched.
+type CPULimitsConfig struct {
+	// Governor is the cpufreq governor to switch to, e.g. powersave
+	Governor string `mapstructure:"governor"`
+	// MaxFreqMHz caps the CPU frequency
+	MaxFreqMHz uint `mapstructure:"max_freq_mhz"`
 }
 
 // HealthConfig configures the health condition detectors

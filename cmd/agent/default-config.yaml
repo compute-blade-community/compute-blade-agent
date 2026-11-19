@@ -100,3 +100,18 @@ indicators:
       red: 32
       green: 32
       blue: 0
+
+# Limit the CPU while the blade is short on power. Disabled unless at least one field is set.
+# Fields: governor (cpufreq governor, e.g. powersave) and max_freq_mhz (CPU frequency cap, 0 = no cap).
+# When several apply at once, the lowest frequency cap wins and the under-voltage governor takes precedence.
+# The original settings are restored as soon as no limit applies, and when the agent stops.
+power_policy:
+  # Applies while the blade isn't powered by 802.3at PoE+ (802.3af PoE or USB-C)
+  # Note: the RK3588 HAL can't detect PoE+ yet and always reports 802.3af/USB-C
+  limited_power:
+    governor: ""
+    max_freq_mhz: 0
+  # Applies while the undervoltage condition is raised (requires health.undervoltage.enabled)
+  undervoltage:
+    governor: ""
+    max_freq_mhz: 0
