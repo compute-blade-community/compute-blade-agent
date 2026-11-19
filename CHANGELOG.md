@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.5](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.4...v0.11.5) (2026-11-19)
+
+
+### Bug Fixes
+
+* **hal:** re-detect the smart fan unit after a fallback, label power_status by name ([#233](https://github.com/compute-blade-community/compute-blade-agent/issues/233)) ([ab5a96d](https://github.com/compute-blade-community/compute-blade-agent/commit/ab5a96d71f3dcf770e0337decd7c8dcae8235eb8))
+
 ## [0.11.4](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.3...v0.11.4) (2026-11-19)
 
 
