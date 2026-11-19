@@ -2,8 +2,11 @@ package config
 
 import (
 	"encoding/base64"
+	"net"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/sierrasoftworks/humane-errors-go"
 	"github.com/spechtlabs/go-otel-utils/otelzap"
@@ -91,4 +94,125 @@ func EnsureBladectlConfigHome() (string, humane.Error) {
 	}
 
 	return configDir, nil
+}
+
+// DiscoveryResult describes what MergeDiscovered did with a discovered blade
+type DiscoveryResult int
+
+const (
+	// DiscoveryUnchanged means the blade is configured with the discovered address already
+	DiscoveryUnchanged DiscoveryResult = iota
+	// DiscoveryUpdated means the server address of a configured blade was updated
+	DiscoveryUpdated
+	// DiscoveryAdded means the blade was added to the configuration
+	DiscoveryAdded
+	// DiscoveryNeedsCredentials means the blade requires mTLS and isn't configured yet. Its client certificate has to
+	// be copied from the blade (~/.config/bladectl/config.yaml), it can't be added automatically.
+	DiscoveryNeedsCredentials
+	// DiscoveryLocal means the blade is configured with a Unix socket, or it's the machine bladectl runs on and is
+	// configured with a localhost address. The address is kept.
+	DiscoveryLocal
+)
+
+// Discovered is a blade found on the network
+type Discovered struct {
+	// Name is the blade's name (its hostname)
+	Name string
+	// Server is the address to reach its API at, e.g. blade-pi1.local:8081
+	Server string
+	// Addresses are the blade's IP addresses
+	Addresses []net.IP
+	// Authenticated is true if the API requires mTLS client certificates
+	Authenticated bool
+}
+
+// MergeDiscovered adds or updates a blade found via discovery. Blades are matched by name. A configured server
+// address is kept as long as it still points at the blade, even if it's written differently than the discovered one.
+func (c *BladectlConfig) MergeDiscovered(found Discovered) DiscoveryResult {
+	for idx := range c.Blades {
+		blade := &c.Blades[idx].Blade
+		if c.Blades[idx].Name != found.Name {
+			continue
+		}
+		if isSocket(blade.Server) || (isLoopback(blade.Server) && isThisMachine(found.Name)) {
+			return DiscoveryLocal
+		}
+		if pointsToSameBlade(blade.Server, found) {
+			return DiscoveryUnchanged
+		}
+		blade.Server = found.Server
+		return DiscoveryUpdated
+	}
+
+	if found.Authenticated {
+		return DiscoveryNeedsCredentials
+	}
+
+	c.Blades = append(c.Blades, NamedBlade{Name: found.Name, Blade: Blade{Server: found.Server}})
+	if c.CurrentBlade == "" {
+		c.CurrentBlade = found.Name
+	}
+	return DiscoveryAdded
+}
+
+// pointsToSameBlade reports whether a configured server address reaches the discovered blade: same port, and either
+// one of the blade's IP addresses or the same host name, possibly in another domain (blade-pi1 resolved via the DNS
+// search domain, blade-pi1.local via mDNS, blade-pi1.example.net via DNS).
+func pointsToSameBlade(server string, found Discovered) bool {
+	host, port, err := net.SplitHostPort(server)
+	foundHost, foundPort, foundErr := net.SplitHostPort(found.Server)
+	if err != nil || foundErr != nil {
+		return server == found.Server
+	}
+	if port != foundPort {
+		return false
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		return slices.ContainsFunc(found.Addresses, ip.Equal)
+	}
+
+	host, foundHost = normalizeHost(host), normalizeHost(foundHost)
+	if host == foundHost {
+		return true
+	}
+	shortName, _, _ := strings.Cut(host, ".")
+	foundShortName, _, _ := strings.Cut(foundHost, ".")
+	return shortName == foundShortName
+}
+
+func normalizeHost(host string) string {
+	return strings.ToLower(strings.TrimSuffix(host, "."))
+}
+
+// isSocket reports whether a server address is a Unix socket
+func isSocket(server string) bool {
+	return strings.HasPrefix(server, "/") || strings.HasPrefix(server, "unix:")
+}
+
+// isLoopback reports whether a server address points to the machine bladectl runs on. Such an entry was usually
+// copied from the blade's own bladectl config and only works there.
+func isLoopback(server string) bool {
+	host, _, err := net.SplitHostPort(server)
+	if err != nil {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// hostname returns the name of the machine bladectl runs on; a variable so tests can replace it
+var hostname = os.Hostname
+
+// isThisMachine reports whether a discovered blade is the machine bladectl runs on
+func isThisMachine(name string) bool {
+	own, err := hostname()
+	if err != nil {
+		return false
+	}
+	own, _, _ = strings.Cut(own, ".")
+	return strings.EqualFold(own, name)
 }

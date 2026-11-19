@@ -192,7 +192,18 @@ This will:
 scp root@blade-pi1:~/.config/bladectl/config.yaml ~/.config/bladectl/config.yaml
 ```
 
-2. Fix the server address to point to the blade:
+2. Point the server address to the blade. Agents listening on TCP announce themselves via mDNS
+   (`_compute-blade._tcp`, registered with avahi-daemon if it runs), so `bladectl discover --save` finds them and updates
+   the address of every configured blade. Addresses that still reach the blade (e.g. `blade-pi1:8081` instead of
+   `blade-pi1.local:8081`, or one of its IP addresses) are kept:
+
+```bash
+bladectl discover          # list blades on the network
+bladectl discover --save   # update the addresses in ~/.config/bladectl/config.yaml
+```
+
+   Blades without authentication are added automatically. Blades requiring mTLS have to be in the config already
+   (step 1), because their client certificate can't be fetched over the network. Without mDNS, set the address by hand:
 
 ```bash
 yq e '.blades[] | select(.name == "blade-pi1") .blade.server = "blade-pi1.local:8081"' -i ~/.config/bladectl/config.yaml

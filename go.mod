@@ -5,7 +5,9 @@ go 1.27.0
 require (
 	charm.land/lipgloss/v2 v2.1.1
 	github.com/gizak/termui/v3 v3.1.0
+	github.com/godbus/dbus/v5 v5.2.4
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4
+	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/olekukonko/tablewriter v1.1.5
 	github.com/prometheus/client_golang v1.25.0
 	github.com/sierrasoftworks/humane-errors-go v0.0.0-20260820132314-9a466da5e0f0
@@ -52,6 +54,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
+	github.com/miekg/dns v1.1.73 // indirect
 	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

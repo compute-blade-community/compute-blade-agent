@@ -66,6 +66,21 @@ type ComputeBladeAgentConfig struct {
 
 	// Button configures what the edge button's gestures do
 	Button ButtonConfig `mapstructure:"button"`
+
+	// Discovery configures how the agent announces itself on the network
+	Discovery DiscoveryConfig `mapstructure:"discovery"`
+}
+
+// DiscoveryConfig configures network discovery
+type DiscoveryConfig struct {
+	// MDNS announces the gRPC API via mDNS / DNS-SD (_compute-blade._tcp) so bladectl can find the blade.
+	// Only used when the API listens on TCP.
+	MDNS MDNSConfig `mapstructure:"mdns"`
+}
+
+// MDNSConfig configures the mDNS announcement
+type MDNSConfig struct {
+	Enabled bool `mapstructure:"enabled"`
 }
 
 // ButtonConfig binds actions to gestures of the edge button. Every gesture is published as a BUTTON_GESTURE event,

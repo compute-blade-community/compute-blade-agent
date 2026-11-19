@@ -205,6 +205,9 @@ func (a *computeBladeAgent) Run(origCtx context.Context) error {
 	// Start gRPC API
 	go a.runGRpcApi(ctx, cancelCtx)
 
+	// Announce the API on the network
+	go a.runDiscovery(ctx)
+
 	// wait till we're done
 	<-ctx.Done()
 
