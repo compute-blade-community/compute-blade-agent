@@ -44,6 +44,8 @@ type Controller struct {
 	statePath  string
 	applied    Limits
 	hasApplied bool
+	// recovered is set if the originals were taken from the state file of a previous instance
+	recovered bool
 }
 
 // New discovers the cpufreq policies under root ("/" on a real system).
@@ -70,6 +72,7 @@ func New(root string, statePath string) (*Controller, error) {
 
 		if original, ok := saved[filepath.Base(dir)]; ok {
 			p.Governor, p.MaxFreqKHz = original.Governor, original.MaxFreqKHz
+			c.recovered = true
 		} else {
 			if p.Governor, err = readString(filepath.Join(dir, "scaling_governor")); err != nil {
 				return nil, err
@@ -87,6 +90,12 @@ func New(root string, statePath string) (*Controller, error) {
 	}
 
 	return c, nil
+}
+
+// Recovered reports whether a previous instance left limits behind: the original settings were read from its state
+// file instead of the current (possibly limited) values. Restore puts them back.
+func (c *Controller) Recovered() bool {
+	return c.recovered
 }
 
 // AvailableGovernors returns the governors the kernel offers.

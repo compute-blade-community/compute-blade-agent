@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/agent"
@@ -58,11 +59,28 @@ func toLimits(cfg agent.CPULimitsConfig) cpufreq.Limits {
 	return cpufreq.Limits{Governor: cfg.Governor, MaxFreqKHz: uint64(cfg.MaxFreqMHz) * 1000}
 }
 
+// restoreCPU puts back the original CPU settings, reporting limits a previous agent instance left behind
+func restoreCPU(ctx context.Context, cpu *cpufreq.Controller) {
+	if cpu.Recovered() {
+		log.FromContext(ctx).Warn("Restoring CPU settings limited by a previous agent instance that didn't shut down cleanly",
+			zap.String("state_file", cpufreqStatePath))
+	}
+	if err := cpu.Restore(); err != nil {
+		log.FromContext(ctx).WithError(err).Warn("Failed to restore original CPU settings")
+	}
+}
+
 // setupPowerPolicy enables the power policy if any limit is configured and the system supports cpufreq.
 func (a *computeBladeAgent) setupPowerPolicy(ctx context.Context) error {
 	cfg := a.config.PowerPolicy
 	limitedPower, undervoltage := toLimits(cfg.LimitedPower), toLimits(cfg.Undervoltage)
 	if limitedPower.IsZero() && undervoltage.IsZero() {
+		// The power policy may have been disabled after an agent instance with limits applied didn't shut down cleanly
+		if _, err := os.Stat(cpufreqStatePath); err == nil {
+			if cpu, err := cpufreq.New("/", cpufreqStatePath); err == nil {
+				restoreCPU(ctx, cpu)
+			}
+		}
 		return nil
 	}
 
@@ -82,9 +100,7 @@ func (a *computeBladeAgent) setupPowerPolicy(ctx context.Context) error {
 
 	// Start from the original settings. This undoes limits left behind by a previous agent instance that didn't shut
 	// down cleanly (the originals were persisted to cpufreqStatePath).
-	if err := cpu.Restore(); err != nil {
-		log.FromContext(ctx).WithError(err).Warn("Failed to restore original CPU settings")
-	}
+	restoreCPU(ctx, cpu)
 
 	if !undervoltage.IsZero() && a.undervoltageDetector == nil {
 		log.FromContext(ctx).Warn("power_policy.undervoltage is configured but under-voltage detection is disabled, it will never apply")

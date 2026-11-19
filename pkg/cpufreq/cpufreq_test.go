@@ -81,11 +81,13 @@ func TestController_RecoversOriginalsAfterCrash(t *testing.T) {
 
 	first, err := cpufreq.New(root, statePath)
 	require.NoError(t, err)
+	assert.False(t, first.Recovered())
 	require.NoError(t, first.Apply(cpufreq.Limits{Governor: "powersave", MaxFreqKHz: 1000000}))
 
 	// The agent crashes without restoring. A new instance must not take the limited values as originals.
 	second, err := cpufreq.New(root, statePath)
 	require.NoError(t, err)
+	assert.True(t, second.Recovered())
 	require.NoError(t, second.Restore())
 
 	assert.Equal(t, "ondemand", read(t, filepath.Join(policy, "scaling_governor")))
