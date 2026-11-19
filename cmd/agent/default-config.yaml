@@ -115,3 +115,29 @@ power_policy:
   undervoltage:
     governor: ""
     max_freq_mhz: 0
+
+# Edge button gestures. Each gesture runs either a built-in action or a command:
+#   action: one of none, identify-toggle, shutdown, reboot, emergency-poweroff
+#   exec:   a command and its arguments, run directly (not through a shell) with these environment variables:
+#           BLADE_EVENT, BLADE_GESTURE, BLADE_PRESS_COUNT, BLADE_HOLD_MS, BLADE_HOSTNAME
+#   timeout: how long exec may run before it is killed (default 30s)
+# Every gesture is also published as a button_gesture event (bladectl events), whether or not an action is bound.
+# The fan unit button always toggles identify; it doesn't do gestures.
+#
+# emergency-poweroff cuts power right away without stopping services or unmounting file systems (it tries to flush
+# data for up to 2s). Use it for a blade whose shutdown hangs; file systems may need repair on the next boot.
+button:
+  # Longest gap between two presses for them to count as one gesture
+  gesture_window: 400ms
+  # Defaults to identify-toggle; set `action: none` to disable
+  single:
+    action: identify-toggle
+  double: {}
+  # Holding the button. The edge LED blinks white after 1s to show a long press is coming.
+  long_press:
+    hold: 5s
+    # action: shutdown
+  # A series of `count` short presses (at least 3). Fires as soon as the count is reached.
+  multi_press:
+    count: 5
+    # action: emergency-poweroff

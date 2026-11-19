@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/log"
 	"go.uber.org/zap"
 )
@@ -45,13 +46,16 @@ func (a *computeBladeAgent) handleEvent(ctx context.Context, msg events.Message)
 	case events.IdentifyConfirmEvent:
 		// Handle identify event
 		return a.handleIdentifyConfirm(ctx)
-	case events.EdgeButtonEvent:
-		// Handle edge button press to toggle identify mode
-		event := events.Event(events.IdentifyEvent)
-		if a.state.IdentifyActive() {
-			event = events.Event(events.IdentifyConfirmEvent)
+	case events.ButtonPressEvent:
+		// The fan unit button toggles identify mode. Edge button presses are turned into gestures by the button
+		// handler, which runs the action bound to them.
+		if details, ok := msg.Details.(events.ButtonDetails); ok && details.Source == hal.ButtonSourceFanUnit.String() {
+			event := events.Event(events.IdentifyEvent)
+			if a.state.IdentifyActive() {
+				event = events.Event(events.IdentifyConfirmEvent)
+			}
+			a.emitEvent(ctx, event)
 		}
-		a.emitEvent(ctx, event)
 	case events.NoopEvent:
 	}
 

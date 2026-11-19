@@ -66,6 +66,11 @@ var (
 	edgeButtonEventCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "computeblade",
 		Name:      "edge_button_event_count",
-		Help:      "Number of edge button presses",
+		Help:      "Number of button presses (edge button and fan unit button)",
+	})
+	droppedButtonEventCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "computeblade",
+		Name:      "button_events_dropped_count",
+		Help:      "Number of button events dropped because the agent fell behind",
 	})
 )

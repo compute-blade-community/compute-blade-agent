@@ -150,6 +150,20 @@ func formatEventDetails(event *bladeapiv1alpha1.AgentEvent) string {
 	switch details := event.GetDetails().(type) {
 	case *bladeapiv1alpha1.AgentEvent_Fan:
 		return fmt.Sprintf("target=%d%% rpm=%d", details.Fan.GetTargetPercent(), details.Fan.GetRpm())
+	case *bladeapiv1alpha1.AgentEvent_Button:
+		return "source=" + details.Button.GetSource()
+	case *bladeapiv1alpha1.AgentEvent_Gesture:
+		g := details.Gesture
+		out := "gesture=" + g.GetGesture()
+		if g.GetGesture() == "long_press" {
+			out += fmt.Sprintf(" held=%s", time.Duration(g.GetHeldMs())*time.Millisecond)
+		} else {
+			out += fmt.Sprintf(" presses=%d", g.GetPresses())
+		}
+		if g.GetAction() != "" {
+			out += " action=" + g.GetAction()
+		}
+		return out
 	case *bladeapiv1alpha1.AgentEvent_PowerLimit:
 		p := details.PowerLimit
 		out := fmt.Sprintf("reasons=%s", strings.Join(p.GetReasons(), ","))

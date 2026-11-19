@@ -15,7 +15,7 @@ enum Event {
   IDENTIFY_CONFIRM = 1;
   CRITICAL = 2;
   CRITICAL_RESET = 3;
-  // A button (edge button or fan unit button) was pressed. Published only.
+  // A button (edge button or fan unit button) was pressed. Published only, carries ButtonDetails.
   BUTTON_PRESS = 4;
   // The fan is commanded to spin but its tachometer reports no rotation. Published only, carries FanDetails.
   FAN_STALL = 5;
@@ -34,6 +34,9 @@ enum Event {
   POWER_LIMIT = 11;
   // The power policy lifted all CPU limits. Published only, carries PowerLimitDetails.
   POWER_LIMIT_CLEAR = 12;
+  // A gesture of the edge button was recognised (single, double, multi_press, long_press). Published whether or not
+  // an action is bound to it. Published only, carries GestureDetails.
+  BUTTON_GESTURE = 13;
 }
 
 // FanUnit defines the fan unit detected by the blade
@@ -105,7 +108,27 @@ message AgentEvent {
     FanDetails fan = 10;
     ThrottleDetails throttle = 11;
     PowerLimitDetails power_limit = 12;
+    ButtonDetails button = 13;
+    GestureDetails gesture = 14;
   }
+}
+
+// ButtonDetails are attached to BUTTON_PRESS events.
+message ButtonDetails {
+  // The button that was pressed: "edge" or "fan_unit".
+  string source = 1;
+}
+
+// GestureDetails are attached to BUTTON_GESTURE events.
+message GestureDetails {
+  // "single", "double", "multi_press" or "long_press".
+  string gesture = 1;
+  // Number of presses for single, double and multi_press.
+  uint32 presses = 2;
+  // How long the button was held for a long_press, in milliseconds.
+  int64 held_ms = 3;
+  // What the agent ran in response: a built-in action name, "exec", or empty if nothing is bound to the gesture.
+  string action = 4;
 }
 
 // PowerLimitDetails are attached to POWER_LIMIT and POWER_LIMIT_CLEAR events.

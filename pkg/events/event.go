@@ -10,7 +10,7 @@ const (
 	IdentifyConfirmEvent
 	CriticalEvent
 	CriticalResetEvent
-	EdgeButtonEvent
+	ButtonPressEvent
 	FanStallEvent
 	FanStallClearEvent
 	UndervoltageEvent
@@ -19,6 +19,7 @@ const (
 	ThrottledClearEvent
 	PowerLimitEvent
 	PowerLimitClearEvent
+	ButtonGestureEvent
 )
 
 // Health conditions. A condition is raised and cleared by a pair of events (see Event.ConditionChange).
@@ -47,8 +48,10 @@ func (e Event) String() string {
 		return "critical"
 	case CriticalResetEvent:
 		return "critical_reset"
-	case EdgeButtonEvent:
-		return "edge_button"
+	case ButtonPressEvent:
+		return "button_press"
+	case ButtonGestureEvent:
+		return "button_gesture"
 	case FanStallEvent:
 		return "fan_stall"
 	case FanStallClearEvent:
@@ -112,6 +115,24 @@ type PowerLimitDetails struct {
 	Governor string
 	// MaxFreqMHz is the CPU frequency cap, 0 if the policy sets none
 	MaxFreqMHz uint
+}
+
+// ButtonDetails are attached to button press events.
+type ButtonDetails struct {
+	// Source is the button that was pressed: edge or fan_unit
+	Source string
+}
+
+// GestureDetails are attached to button gesture events.
+type GestureDetails struct {
+	// Gesture is single, double, multi_press or long_press
+	Gesture string
+	// Presses is the number of presses of a single, double or multi_press gesture
+	Presses int
+	// Held is how long the button was held for a long_press
+	Held time.Duration
+	// Action is what the agent ran in response: a built-in action name, "exec", or empty for nothing
+	Action string
 }
 
 // Message is an Event together with the time it occurred and optional, event-specific details.

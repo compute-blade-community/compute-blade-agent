@@ -121,7 +121,7 @@ func TestWatchEvents_EndsOnShutdown(t *testing.T) {
 
 	stream, err := client.WatchEvents(ctx, &bladeapiv1alpha1.WatchEventsRequest{})
 	require.NoError(t, err)
-	publishUntilReceived(t, a, stream, events.NewMessage(events.EdgeButtonEvent, nil))
+	publishUntilReceived(t, a, stream, events.NewMessage(events.ButtonPressEvent, nil))
 
 	a.shutdownOnce.Do(func() { close(a.shutdown) })
 

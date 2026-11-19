@@ -10,6 +10,7 @@ import (
 	"time"
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/actions"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/agent"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/fancontroller"
@@ -86,6 +87,11 @@ type computeBladeAgent struct {
 
 	// powerPolicy limits the CPU while the blade is short on power. Nil if not configured.
 	powerPolicy *powerPolicy
+
+	// actions runs the actions bound to button gestures
+	actions *actions.Runner
+	// buttons is the validated button configuration
+	buttons buttonBindings
 }
 
 // NewComputeBladeAgent creates and initializes a new ComputeBladeAgent, including gRPC server setup and hardware interfaces.
@@ -134,6 +140,11 @@ func NewComputeBladeAgent(ctx context.Context, config agent.ComputeBladeAgentCon
 		return nil, err
 	}
 
+	a.actions = a.newActionRunner()
+	if err := a.setupButtons(); err != nil {
+		return nil, err
+	}
+
 	if err := a.setupGrpcServer(ctx); err != nil {
 		return nil, err
 	}
@@ -173,9 +184,8 @@ func (a *computeBladeAgent) Run(origCtx context.Context) error {
 
 	go a.runHal(ctx, cancelCtx)
 
-	// Start edge button event handler
-
-	go a.runEdgeButtonHandler(ctx, cancelCtx)
+	// Start button handler
+	go a.runButtonHandler(ctx)
 
 	// Start top LED engine
 	go a.runTopLedEngine(ctx, cancelCtx)
@@ -381,25 +391,6 @@ func (a *computeBladeAgent) emitMessage(ctx context.Context, msg events.Message)
 	default:
 		log.FromContext(ctx).Warn("Event dropped due to backlog", zap.String("event", msg.Event.String()))
 		droppedEventCounter.WithLabelValues(msg.Event.String()).Inc()
-	}
-}
-
-// runEdgeButtonHandler initializes and handles edge button press events in a loop until the context is canceled.
-// It waits for edge button presses and sends corresponding events to the event channel, logging errors and warnings.
-// If an unrecoverable error occurs, the cancel function is triggered to terminate the operation.
-func (a *computeBladeAgent) runEdgeButtonHandler(ctx context.Context, cancel context.CancelCauseFunc) {
-	log.FromContext(ctx).Info("Starting edge button event handler")
-	for {
-		if err := a.blade.WaitForEdgeButtonPress(ctx); err != nil {
-			if !errors.Is(err, context.Canceled) {
-				log.FromContext(ctx).WithError(err).Error("Edge button event handler failed")
-				cancel(err)
-			}
-
-			return
-		}
-
-		a.emitEvent(ctx, events.EdgeButtonEvent)
 	}
 }
 

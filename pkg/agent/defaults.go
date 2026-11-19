@@ -28,6 +28,12 @@ func SetDefaults(v *viper.Viper) {
 	v.SetDefault("health.throttling.enabled", true)
 	v.SetDefault("health.throttling.clear_after", 30*time.Second)
 
+	// Button gestures. The single press action defaults to identify-toggle in the agent (see ButtonConfig.Single);
+	// a viper default can't be used for it because it would merge with a user-configured exec.
+	v.SetDefault("button.gesture_window", 400*time.Millisecond)
+	v.SetDefault("button.long_press.hold", 5*time.Second)
+	v.SetDefault("button.multi_press.count", 5)
+
 	// Fan stall indicator: fast blinking orange on the top LED
 	setIndicatorDefaults(v, events.ConditionFanStall, IndicatorLedTop, "fast-blink", 64, 24, 0, 30)
 	// Under-voltage indicator: amber bursts on the top LED

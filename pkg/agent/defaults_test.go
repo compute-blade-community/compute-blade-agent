@@ -96,3 +96,29 @@ indicators:
 	assert.Equal(t, "fast-blink", cfg.Indicators[events.ConditionFanStall].Pattern)
 	assert.Equal(t, 30, cfg.Indicators[events.ConditionFanStall].Priority)
 }
+
+func TestButtonConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := loadConfig(t, `
+button:
+  double:
+    exec: ["/usr/local/bin/drain.sh", "--force"]
+    timeout: 1m
+  long_press:
+    hold: 3s
+    action: shutdown
+  multi_press:
+    action: emergency-poweroff
+`)
+
+	b := cfg.Button
+	assert.Equal(t, 400*time.Millisecond, b.GestureWindow)
+	assert.True(t, b.Single.IsZero(), "single falls back to identify-toggle in the agent")
+	assert.Equal(t, []string{"/usr/local/bin/drain.sh", "--force"}, b.Double.Exec)
+	assert.Equal(t, time.Minute, b.Double.Timeout)
+	assert.Equal(t, 3*time.Second, b.LongPress.Hold)
+	assert.Equal(t, "shutdown", b.LongPress.Action)
+	assert.Equal(t, 5, b.MultiPress.Count)
+	assert.Equal(t, "emergency-poweroff", b.MultiPress.Action)
+}

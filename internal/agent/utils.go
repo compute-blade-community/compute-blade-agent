@@ -40,7 +40,7 @@ func toProtoEventType(event events.Event) (bladeapiv1alpha1.Event, bool) {
 		return bladeapiv1alpha1.Event_CRITICAL, true
 	case events.CriticalResetEvent:
 		return bladeapiv1alpha1.Event_CRITICAL_RESET, true
-	case events.EdgeButtonEvent:
+	case events.ButtonPressEvent:
 		return bladeapiv1alpha1.Event_BUTTON_PRESS, true
 	case events.FanStallEvent:
 		return bladeapiv1alpha1.Event_FAN_STALL, true
@@ -58,6 +58,8 @@ func toProtoEventType(event events.Event) (bladeapiv1alpha1.Event, bool) {
 		return bladeapiv1alpha1.Event_POWER_LIMIT, true
 	case events.PowerLimitClearEvent:
 		return bladeapiv1alpha1.Event_POWER_LIMIT_CLEAR, true
+	case events.ButtonGestureEvent:
+		return bladeapiv1alpha1.Event_BUTTON_GESTURE, true
 	default:
 		return 0, false
 	}
@@ -96,6 +98,17 @@ func toProtoEvent(msg events.Message, blade string) (*bladeapiv1alpha1.AgentEven
 			Reasons:    details.Reasons,
 			Governor:   details.Governor,
 			MaxFreqMhz: uint32(details.MaxFreqMHz),
+		}}
+	case events.ButtonDetails:
+		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Button{Button: &bladeapiv1alpha1.ButtonDetails{
+			Source: details.Source,
+		}}
+	case events.GestureDetails:
+		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Gesture{Gesture: &bladeapiv1alpha1.GestureDetails{
+			Gesture: details.Gesture,
+			Presses: uint32(details.Presses),
+			HeldMs:  details.Held.Milliseconds(),
+			Action:  details.Action,
 		}}
 	}
 

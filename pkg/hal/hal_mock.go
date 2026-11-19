@@ -60,9 +60,9 @@ func (m *ComputeBladeHalMock) GetPowerStatus() (PowerStatus, error) {
 	return args.Get(0).(PowerStatus), args.Error(1)
 }
 
-func (m *ComputeBladeHalMock) WaitForEdgeButtonPress(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
+func (m *ComputeBladeHalMock) ButtonEvents() <-chan ButtonEvent {
+	args := m.Called()
+	return args.Get(0).(<-chan ButtonEvent)
 }
 
 func (m *ComputeBladeHalMock) SetLed(idx LedIndex, color led.Color) error {
