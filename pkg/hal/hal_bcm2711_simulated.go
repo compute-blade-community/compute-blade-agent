@@ -53,6 +53,10 @@ func (m *SimulatedHal) GetFanRPM() (float64, error) {
 	return 1337, nil
 }
 
+func (m *SimulatedHal) GetThrottleStatus() (ThrottleStatus, error) {
+	return 0, nil
+}
+
 func (m *SimulatedHal) FanRPMSupported() bool {
 	return true
 }

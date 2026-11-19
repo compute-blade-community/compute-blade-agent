@@ -93,6 +93,11 @@ func (rk *rk3588) GetFanRPM() (float64, error) {
 	return 0, nil
 }
 
+// GetThrottleStatus is not supported, the RK3588 has no Raspberry Pi firmware.
+func (rk *rk3588) GetThrottleStatus() (ThrottleStatus, error) {
+	return 0, ErrNotSupported
+}
+
 // FanRPMSupported returns false — no tachometer GPIO is mapped on the RK3588.
 func (rk *rk3588) FanRPMSupported() bool {
 	return false

@@ -5,6 +5,7 @@ import (
 
 	bladeapiv1alpha1 "github.com/compute-blade-community/compute-blade-agent/api/bladeapi/v1alpha1"
 	"github.com/compute-blade-community/compute-blade-agent/pkg/events"
+	"github.com/compute-blade-community/compute-blade-agent/pkg/hal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -45,6 +46,14 @@ func toProtoEventType(event events.Event) (bladeapiv1alpha1.Event, bool) {
 		return bladeapiv1alpha1.Event_FAN_STALL, true
 	case events.FanStallClearEvent:
 		return bladeapiv1alpha1.Event_FAN_STALL_CLEAR, true
+	case events.UndervoltageEvent:
+		return bladeapiv1alpha1.Event_UNDERVOLTAGE, true
+	case events.UndervoltageClearEvent:
+		return bladeapiv1alpha1.Event_UNDERVOLTAGE_CLEAR, true
+	case events.ThrottledEvent:
+		return bladeapiv1alpha1.Event_THROTTLED, true
+	case events.ThrottledClearEvent:
+		return bladeapiv1alpha1.Event_THROTTLED_CLEAR, true
 	default:
 		return 0, false
 	}
@@ -68,6 +77,15 @@ func toProtoEvent(msg events.Message, blade string) (*bladeapiv1alpha1.AgentEven
 		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Fan{Fan: &bladeapiv1alpha1.FanDetails{
 			TargetPercent: uint32(details.TargetPercent),
 			Rpm:           uint32(max(details.RPM, 0)),
+		}}
+	case events.ThrottleDetails:
+		status := hal.ThrottleStatus(details.Flags)
+		agentEvent.Details = &bladeapiv1alpha1.AgentEvent_Throttle{Throttle: &bladeapiv1alpha1.ThrottleDetails{
+			Flags:         details.Flags,
+			UnderVoltage:  status.Has(hal.ThrottleUnderVoltage),
+			ArmFreqCapped: status.Has(hal.ThrottleArmFreqCapped),
+			Throttled:     status.Has(hal.ThrottleThrottled),
+			SoftTempLimit: status.Has(hal.ThrottleSoftTempLimit),
 		}}
 	}
 

@@ -145,6 +145,9 @@ type bcm2712 struct {
 
 	// Fan unit
 	fanUnit FanUnit
+
+	// throttle reads under-voltage and throttling flags from the firmware; nil if unavailable
+	throttle *throttleReader
 }
 
 func newBcm2712Hal(ctx context.Context, opts ComputeBladeHalOpts) (ComputeBladeHal, error) {
@@ -281,6 +284,11 @@ func (bcm *bcm2712) setup(ctx context.Context) error {
 		return fmt.Errorf("failed to request GPIO21 (stealth mode): %w", err)
 	}
 
+	// Locate the firmware's under-voltage / throttling flags
+	var throttleErr error
+	bcm.throttle, throttleErr = newThrottleReader("/")
+	logThrottleSource(ctx, bcm.throttle, throttleErr)
+
 	// Detect fan unit type
 	log.FromContext(ctx).Info("detecting fan unit")
 	detectCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -409,6 +417,13 @@ func (bcm *bcm2712) WaitForEdgeButtonPress(parentCtx context.Context) error {
 func (bcm *bcm2712) GetFanRPM() (float64, error) {
 	rpm, err := bcm.fanUnit.FanSpeedRPM(context.TODO())
 	return float64(rpm), err
+}
+
+func (bcm *bcm2712) GetThrottleStatus() (ThrottleStatus, error) {
+	if bcm.throttle == nil {
+		return 0, ErrNotSupported
+	}
+	return bcm.throttle.Read()
 }
 
 func (bcm *bcm2712) FanRPMSupported() bool {

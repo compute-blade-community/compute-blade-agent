@@ -28,6 +28,11 @@ published as an event and reported by `bladectl get status`:
 | Condition   | Raised when                                                                    | Default indicator           |
 |-------------|--------------------------------------------------------------------------------|-----------------------------|
 | `fan_stall` | the fan is commanded to ≥20% but reports <100 RPM for 15s (needs RPM reporting) | top LED, fast-blink, orange |
+| `undervoltage` | the Raspberry Pi firmware reports under-voltage (e.g. PoE budget exhausted) | top LED, burst, amber |
+| `throttled` | the CPU frequency is capped, throttled or at the soft temperature limit | none |
+
+Under-voltage and throttling clear once the flags stayed off for 30s. The raw firmware flags are also exported as
+`computeblade_throttle_active` and `computeblade_throttle_occurred` (since boot).
 
 Indicators share the LEDs by priority, so identify (edge LED) and critical mode (top LED) always win and the
 indicator shows up again once they are cleared. See `health` and `indicators` in the default configuration.

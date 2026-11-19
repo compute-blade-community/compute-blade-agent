@@ -35,6 +35,11 @@ func (m *ComputeBladeHalMock) GetFanRPM() (float64, error) {
 	return args.Get(0).(float64), args.Error(1)
 }
 
+func (m *ComputeBladeHalMock) GetThrottleStatus() (ThrottleStatus, error) {
+	args := m.Called()
+	return args.Get(0).(ThrottleStatus), args.Error(1)
+}
+
 func (m *ComputeBladeHalMock) FanRPMSupported() bool {
 	args := m.Called()
 	return args.Bool(0)
