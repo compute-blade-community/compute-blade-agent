@@ -27,8 +27,9 @@ const (
 	FanUnitKindSmart
 )
 
+// Typed, so fmt and the power_status metric labels use String() (poe+, poeOrUsbC) instead of the bare number
 const (
-	PowerPoeOrUsbC = iota
+	PowerPoeOrUsbC PowerStatus = iota
 	PowerPoe802at
 )
 
