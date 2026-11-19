@@ -17,7 +17,7 @@ func found(name string, authenticated bool, addresses ...string) config.Discover
 }
 
 func TestMergeDiscovered(t *testing.T) {
-	t.Parallel()
+	defer config.SetHostname("workstation")()
 
 	cfg := &config.BladectlConfig{
 		Blades: []config.NamedBlade{
@@ -30,7 +30,9 @@ func TestMergeDiscovered(t *testing.T) {
 	}
 
 	assert.Equal(t, config.DiscoveryLocal, cfg.MergeDiscovered(found("local", false)))
-	assert.Equal(t, config.DiscoveryLocal, cfg.MergeDiscovered(found("loopback", false)))
+	// a localhost entry for another machine was copied from that blade and can't reach it from here
+	assert.Equal(t, config.DiscoveryUpdated, cfg.MergeDiscovered(found("loopback", false)))
+	assert.Equal(t, "loopback.local:8081", cfg.Blades[1].Blade.Server)
 	assert.Equal(t, config.DiscoveryUnchanged, cfg.MergeDiscovered(found("blade-pi2", false)))
 
 	// the blade's IP address changed: address updated, credentials kept
@@ -69,6 +71,19 @@ func TestMergeDiscovered_KeepsServersThatReachTheBlade(t *testing.T) {
 		cfg := &config.BladectlConfig{Blades: []config.NamedBlade{{Name: "blade-pi1", Blade: config.Blade{Server: server}}}}
 		assert.Equal(t, config.DiscoveryUpdated, cfg.MergeDiscovered(found("blade-pi1", true, "192.168.1.10")), server)
 	}
+}
+
+func TestMergeDiscovered_KeepsLocalhostOfThisMachine(t *testing.T) {
+	defer config.SetHostname("blade-pi1.example.net")()
+
+	cfg := &config.BladectlConfig{Blades: []config.NamedBlade{
+		{Name: "blade-pi1", Blade: config.Blade{Server: "localhost:8081"}},
+		{Name: "blade-pi2", Blade: config.Blade{Server: "localhost:8081"}},
+	}}
+	assert.Equal(t, config.DiscoveryLocal, cfg.MergeDiscovered(found("blade-pi1", true)))
+	assert.Equal(t, "localhost:8081", cfg.Blades[0].Blade.Server)
+	assert.Equal(t, config.DiscoveryUpdated, cfg.MergeDiscovered(found("blade-pi2", true)))
+	assert.Equal(t, "blade-pi2.local:8081", cfg.Blades[1].Blade.Server)
 }
 
 func TestMergeDiscovered_SetsCurrentBlade(t *testing.T) {

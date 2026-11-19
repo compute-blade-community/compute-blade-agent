@@ -109,7 +109,8 @@ const (
 	// DiscoveryNeedsCredentials means the blade requires mTLS and isn't configured yet. Its client certificate has to
 	// be copied from the blade (~/.config/bladectl/config.yaml), it can't be added automatically.
 	DiscoveryNeedsCredentials
-	// DiscoveryLocal means the blade is configured with a local address (unix socket or localhost), which is kept
+	// DiscoveryLocal means the blade is configured with a Unix socket, or it's the machine bladectl runs on and is
+	// configured with a localhost address. The address is kept.
 	DiscoveryLocal
 )
 
@@ -133,7 +134,7 @@ func (c *BladectlConfig) MergeDiscovered(found Discovered) DiscoveryResult {
 		if c.Blades[idx].Name != found.Name {
 			continue
 		}
-		if isLocalServer(blade.Server) {
+		if isSocket(blade.Server) || (isLoopback(blade.Server) && isThisMachine(found.Name)) {
 			return DiscoveryLocal
 		}
 		if pointsToSameBlade(blade.Server, found) {
@@ -184,11 +185,14 @@ func normalizeHost(host string) string {
 	return strings.ToLower(strings.TrimSuffix(host, "."))
 }
 
-// isLocalServer reports whether a server address points to the local machine
-func isLocalServer(server string) bool {
-	if strings.HasPrefix(server, "/") || strings.HasPrefix(server, "unix:") {
-		return true
-	}
+// isSocket reports whether a server address is a Unix socket
+func isSocket(server string) bool {
+	return strings.HasPrefix(server, "/") || strings.HasPrefix(server, "unix:")
+}
+
+// isLoopback reports whether a server address points to the machine bladectl runs on. Such an entry was usually
+// copied from the blade's own bladectl config and only works there.
+func isLoopback(server string) bool {
 	host, _, err := net.SplitHostPort(server)
 	if err != nil {
 		return false
@@ -198,4 +202,17 @@ func isLocalServer(server string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// hostname returns the name of the machine bladectl runs on; a variable so tests can replace it
+var hostname = os.Hostname
+
+// isThisMachine reports whether a discovered blade is the machine bladectl runs on
+func isThisMachine(name string) bool {
+	own, err := hostname()
+	if err != nil {
+		return false
+	}
+	own, _, _ = strings.Cut(own, ".")
+	return strings.EqualFold(own, name)
 }
