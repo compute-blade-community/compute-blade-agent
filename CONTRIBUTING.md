@@ -2,19 +2,28 @@
 
 ## Development Setup
 
-The toolchain (Go, TinyGo, golangci-lint, goreleaser, actionlint) is pinned in [`mise.toml`](mise.toml). With [mise](https://mise.jdx.dev/) installed, run this from the repository root:
+The toolchain (Go, TinyGo, buf and its protoc plugins, golangci-lint, goreleaser, actionlint, shellcheck) is pinned in
+[`mise.toml`](mise.toml), and so are the build tasks. With [mise](https://mise.jdx.dev/) installed, run this from the
+repository root:
 
 ```sh
 mise install
 ```
 
-mise puts the pinned versions on your `PATH` inside the repository, so the usual commands work as-is:
+The CI pipeline runs the same tasks, so a local run reproduces it:
 
 ```sh
-make test            # go test ./...
-make lint            # golangci-lint run
-make build-fanunit   # TinyGo firmware for the smart fan unit
+mise tasks              # list all tasks
+mise run ci             # every check the pipeline runs
+mise run test           # unit tests, writes coverage.txt
+mise run lint           # golangci-lint for linux/arm64, the release target
+mise run fmt            # format the code (fmt:check only checks)
+mise run generate       # regenerate the gRPC code after changing api/**/*.proto
+mise run build:fanunit  # TinyGo firmware for the smart fan unit
+mise run snapshot       # all release artifacts, without publishing (needs Docker, or add -- --skip=docker)
 ```
+
+The `Makefile` is deprecated: its targets forward to these tasks and will be removed in a future release.
 
 ## Releases
 
