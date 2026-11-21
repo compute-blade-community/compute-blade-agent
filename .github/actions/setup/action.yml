@@ -15,9 +15,9 @@ runs:
   steps:
     # Installs and caches mise and every tool in mise.toml; the cache key covers mise.toml
     - name: Install mise and the pinned tools
-      uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5
+      uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5
       with:
-        version: 2026.11.10
+        version: 2026.11.11
         cache: true
 
     - name: Locate the Go caches
