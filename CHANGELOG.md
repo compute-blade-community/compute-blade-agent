@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.5...v0.11.6) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/sys to v0.50.0 ([#239](https://github.com/compute-blade-community/compute-blade-agent/issues/239)) ([3cf33ed](https://github.com/compute-blade-community/compute-blade-agent/commit/3cf33ed886e93e08f17ec3afb134c48dc3e82cff))
+
 ## [0.11.5](https://github.com/compute-blade-community/compute-blade-agent/compare/v0.11.4...v0.11.5) (2026-11-19)
 
 
